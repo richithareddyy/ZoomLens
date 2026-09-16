@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zoom Lens</title>
+  <style>
+    /* ---- Design tokens --------------------------------------------------
+       One accent, three text weights, three surfaces. Everything below uses
+       these rather than literal colours, so the whole panel can be retuned
+       from here. Dark only, because the Zoom client this lives in is. */
+    :root {
+      --bg:        #101319;
+      --surface:   #171b23;   /* raised: the composer, the answer */
+      --subtle:    #1c2029;   /* pressed or hovered */
+      --border:    #262c38;
+      --border-lit:#333b4a;
+
+      --text:      #e9ecf1;   /* primary */
+      --text-2:    #aab3c0;   /* secondary */
+      --text-3:    #6f7987;   /* muted */
+
+      --accent:    #6ea8fe;
+      --ok:        #5fc195;
+      --warn:      #e0a458;
+      --err:       #e3796d;
+
+      --r-sm: 6px;
+      --r-md: 9px;
+      --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 22px;
+      --t: 180ms cubic-bezier(.2,.6,.3,1);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;              /* the thread scrolls, not the panel */
+    }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+    /* ---- Header --------------------------------------------------------- */
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--s-3);
+      padding: var(--s-4) var(--s-4) var(--s-3);
+      border-bottom: 1px solid var(--border);
+      flex: none;
+    }
+    header h1 { margin: 0; font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+    header p  { margin: 2px 0 0; font-size: 0.76rem; color: var(--text-3); }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      flex: none; margin-top: 2px;
+      font-size: 0.72rem; color: var(--text-2);
+      padding: 3px 8px 3px 7px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      white-space: nowrap;
+      transition: color var(--t), border-color var(--t);
+    }
+    .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); flex: none; }
+    .pill[data-kind="ok"]      { color: var(--ok);   border-color: #22402f; }
+    .pill[data-kind="ok"] .dot { background: var(--ok); }
+    .pill[data-kind="warn"]      { color: var(--warn); border-color: #413019; }
+    .pill[data-kind="warn"] .dot { background: var(--warn); }
+    .pill[data-kind="err"]       { color: var(--err);  border-color: #452320; }
+    .pill[data-kind="err"] .dot  { background: var(--err); }
+    .pill[data-kind="busy"] .dot { background: var(--accent); animation: breathe 1.5s ease-in-out infinite; }
+    @keyframes breathe { 0%,100% { opacity:.3 } 50% { opacity:1 } }
+
+    /* ---- Notice: development mode, or a recoverable failure ------------- */
+    .notice {
+      margin: var(--s-3) var(--s-4) 0;
+      padding: var(--s-3);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      font-size: 0.78rem;
+      color: var(--text-2);
+      flex: none;
+    }
+    .notice strong { display: block; color: var(--text); font-weight: 600; margin-bottom: 2px; }
+    .notice button {
+      margin-top: var(--s-2);
+      font: inherit; font-size: 0.76rem;
+      color: var(--accent); background: none;
+      border: 1px solid var(--border-lit); border-radius: var(--r-sm);
+      padding: 4px 10px; cursor: pointer;
+      transition: background var(--t);
+    }
+    .notice button:hover { background: var(--subtle); }
+
+    /* ---- Shortcuts ------------------------------------------------------ */
+    .actions { display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-4) 0; flex: none; }
+    .action {
+      display: block; width: 100%; text-align: left;
+      font: inherit; color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border-lit);
+      border-radius: var(--r-md);
+      padding: 9px var(--s-3);
+      cursor: pointer;
+      transition: background var(--t), border-color var(--t), transform 90ms;
+    }
+    .action small { display: block; font-size: 0.74rem; color: var(--text-3); margin-top: 1px; }
+    .action:hover:not(:disabled) { background: var(--subtle); border-color: #3e475a; }
+    .action:active:not(:disabled) { transform: translateY(1px); }
+    .action:disabled { opacity: .4; cursor: not-allowed; border-color: var(--border); }
+
+    /* Once there is a conversation, the shortcuts stop being the main event and
+       give their space back to it. They stay reachable, just smaller. */
+    .actions.compact { grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+    .actions.compact .action { padding: 6px 10px; font-size: 0.78rem; }
+    .actions.compact .action small { display: none; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+
+    /* ---- The thread: the centre of the product once there is an answer -- */
+    .thread {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: var(--s-3) var(--s-4);
+      display: flex; flex-direction: column; gap: var(--s-3);
+    }
+    .empty { margin: auto 0; color: var(--text-3); font-size: 0.78rem; text-align: center; padding: var(--s-4) 0; }
+
+    .turn { display: flex; flex-direction: column; gap: 5px; animation: rise 200ms ease-out; }
+    .turn.question + .turn { margin-top: calc(var(--s-3) * -1 + 5px); }
+    @keyframes rise { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+    .turn .asked {
+      align-self: flex-end; max-width: 92%;
+      font-size: 0.79rem; color: var(--text-2);
+      background: var(--subtle); border: 1px solid var(--border);
+      border-radius: var(--r-md); padding: 6px 10px;
+      overflow-wrap: anywhere;
+    }
+    .turn .label {
+      font-size: 0.67rem; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--text-3);
+    }
+    .turn .body {
+      font-size: 0.84rem; color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--accent);
+      border-radius: var(--r-md);
+      padding: var(--s-3);
+      white-space: pre-wrap; overflow-wrap: anywhere;
+    }
+    .turn .source { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--border);
+                    font-size: 0.71rem; color: var(--text-3); }
+    .turn.failed .body { border-left-color: var(--err); }
+
+    /* Loading: a restrained shimmer, no invented percentages. */
+    .thinking { display: flex; align-items: center; gap: var(--s-2); font-size: 0.79rem; color: var(--text-2); }
+    .thinking i {
+      width: 26px; height: 2px; border-radius: 2px; flex: none;
+      background: linear-gradient(90deg, var(--border) 0%, var(--accent) 50%, var(--border) 100%);
+      background-size: 200% 100%;
+      animation: sweep 1.1s linear infinite;
+    }
+    @keyframes sweep { from { background-position: 100% 0 } to { background-position: -100% 0 } }
+
+    /* ---- Composer ------------------------------------------------------- */
+    .composer { flex: none; padding: var(--s-2) var(--s-4) var(--s-3); border-top: 1px solid var(--border); }
+    .field {
+      display: flex; align-items: center; gap: var(--s-2);
+      background: var(--surface);
+      border: 1px solid var(--border-lit);
+      border-radius: var(--r-md);
+      padding: 4px 4px 4px 11px;
+      transition: border-color var(--t);
+    }
+    .field:focus-within { border-color: var(--accent); }
+    .field input {
+      flex: 1 1 auto; min-width: 0;
+      font: inherit; font-size: 0.82rem;
+      color: var(--text); background: none; border: none; padding: 6px 0;
+    }
+    .field input::placeholder { color: var(--text-3); }
+    .field input:focus { outline: none; }
+    .field button {
+      flex: none; width: 26px; height: 26px;
+      display: grid; place-items: center;
+      font: inherit; font-size: 0.85rem; line-height: 1;
+      color: var(--bg); background: var(--accent);
+      border: none; border-radius: var(--r-sm);
+      cursor: pointer; transition: opacity var(--t);
+    }
+    .field button:disabled { opacity: .3; cursor: not-allowed; }
+    .hint { margin: 6px 2px 0; font-size: 0.7rem; color: var(--text-3); }
+
+    /* ---- Diagnostics, out of the way ------------------------------------ */
+    .diag { flex: none; padding: 0 var(--s-4) var(--s-3); font-size: 0.73rem; }
+    .diag summary {
+      cursor: pointer; color: var(--text-3); list-style: none;
+      padding: 2px 0; user-select: none;
+    }
+    .diag summary::-webkit-details-marker { display: none; }
+    .diag summary::before { content: "› "; }
+    .diag[open] summary::before { content: "⌄ "; }
+    .diag dl { margin: var(--s-2) 0 0; display: grid; grid-template-columns: auto 1fr; gap: 3px var(--s-3); }
+    .diag dt { color: var(--text-3); }
+    .diag dd { margin: 0; text-align: right; overflow-wrap: anywhere;
+               font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-2); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Zoom Lens</h1>
+      <p>Understand what's being shared.</p>
+    </div>
+    <div class="pill" id="state" data-kind="busy" role="status" aria-live="polite">
+      <span class="dot" aria-hidden="true"></span><span id="state-text">Connecting</span>
+    </div>
+  </header>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="actions">
+    <button class="action" id="btn-describe" data-mode="describe" disabled>
+      Describe screen
+      <small>Summarize what I'm looking at</small>
+    </button>
+    <button class="action" id="btn-explain" data-mode="explain" disabled>
+      Explain this
+      <small>Help me understand what's being shown</small>
+    </button>
+  </div>
+
+  <div class="thread" id="thread" role="log" aria-live="polite" aria-label="Answers">
+    <p class="empty" id="empty">Ask about the shared screen, or use a shortcut above.</p>
+  </div>
+
+  <form class="composer" id="composer" autocomplete="off">
+    <div class="field">
+      <input id="q" type="text" maxlength="300" placeholder="Ask about the shared screen…"
+             aria-label="Ask about the shared screen" disabled>
+      <button id="send" type="submit" disabled aria-label="Send question">↑</button>
+    </div>
+    <p class="hint" id="hint">Only you see your answers.</p>
+  </form>
+
+  <details class="diag" id="diag">
+    <summary>Connection details</summary>
+    <dl>
+      <dt>Zoom</dt>      <dd id="d-zoom">checking</dd>
+      <dt>Backend</dt>   <dd id="d-link">connecting</dd>
+      <dt>Meeting</dt>   <dd id="d-meeting">unknown</dd>
+      <dt>Viewing as</dt><dd id="d-viewer">unknown</dd>
+    </dl>
+  </details>
+
+  <script src="https://appssdk.zoom.us/sdk.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
