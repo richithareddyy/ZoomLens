@@ -24,7 +24,7 @@
         </ul>
       </nav>
       <div class="nav-actions">
-        <a class="btn btn-primary btn-sm" href="#demo">See it in action</a>
+        <button type="button" class="btn btn-primary btn-sm" data-try>Try ZoomLens</button>
         <a class="icon-link" href="https://github.com/richithareddyy/ZoomLens" aria-label="ZoomLens on GitHub">
           <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         </a>
@@ -43,25 +43,25 @@
           <p class="lede">Without interrupting the meeting.</p>
           <p class="body">ZoomLens privately helps you understand spreadsheets, papers, presentations and dashboards being shared during a Zoom meeting.</p>
           <div class="cta">
-            <a class="btn btn-primary" href="#demo">See it in action</a>
+            <button type="button" class="btn btn-primary" data-try>Try ZoomLens</button>
             <a class="btn btn-ghost" href="https://github.com/richithareddyy/ZoomLens">View on GitHub</a>
           </div>
         </div>
 
         <div class="hero-demo" id="demo">
           <div class="tabs" role="tablist" aria-label="What is being shared">
-            <button role="tab" class="tab" data-scene="sheet" aria-selected="true">Spreadsheet</button>
-            <button role="tab" class="tab" data-scene="paper" aria-selected="false">Research paper</button>
-            <button role="tab" class="tab" data-scene="dash" aria-selected="false">Dashboard</button>
-            <button role="tab" class="tab" data-scene="slides" aria-selected="false">Presentation</button>
+            <button role="tab" class="tab" data-scene="sheet" aria-controls="screen" aria-selected="true">Spreadsheet</button>
+            <button role="tab" class="tab" data-scene="paper" aria-controls="screen" aria-selected="false" tabindex="-1">Research paper</button>
+            <button role="tab" class="tab" data-scene="dash" aria-controls="screen" aria-selected="false" tabindex="-1">Dashboard</button>
+            <button role="tab" class="tab" data-scene="slides" aria-controls="screen" aria-selected="false" tabindex="-1">Presentation</button>
           </div>
 
-          <div class="seg" role="tablist" aria-label="View">
+          <div class="seg" role="tablist" aria-label="Meeting view">
             <button role="tab" class="seg-btn" data-pane="screen" aria-selected="true">Screen</button>
-            <button role="tab" class="seg-btn" data-pane="lens" aria-selected="false">ZoomLens</button>
+            <button role="tab" class="seg-btn" data-pane="lens" aria-selected="false" tabindex="-1">ZoomLens</button>
           </div>
 
-          <div class="meeting" data-pane-active="screen">
+          <div class="meeting" id="meeting" data-pane="screen">
             <div class="m-top">
               <span class="m-title">Weekly Product Review</span>
               <span class="m-meta"><span class="rec-dot" aria-hidden="true"></span>Sharing · 23:41</span>
@@ -70,37 +70,49 @@
             <div class="m-body">
               <div class="m-stage">
                 <div class="m-share-tag">MK is sharing their screen</div>
-                <div class="screen" id="screen" aria-live="polite"></div>
+                <div class="screen" id="screen" role="region" aria-label="Shared screen"></div>
+                <p class="spot-hint" aria-hidden="true">Select part of the screen to ask about it</p>
                 <div class="tiles" aria-label="Participants">
                   <div class="tile"><span>AR</span></div>
                   <div class="tile speaking"><span>MK</span><i class="talk" aria-hidden="true"></i></div>
                   <div class="tile"><span>JL</span></div>
-                  <div class="tile you"><span>You</span></div>
+                  <div class="tile you" id="you-tile"><span>You</span><i class="muted-icon" aria-hidden="true"></i></div>
                 </div>
               </div>
 
-              <aside class="lens-panel" aria-label="ZoomLens panel">
+              <aside class="lens-panel" id="lens-panel" aria-label="ZoomLens">
                 <div class="lp-head">
-                  <span class="lp-name"><span class="glyph glyph-sm" aria-hidden="true"></span>ZoomLens</span>
-                  <span class="lp-state">Viewing shared screen</span>
+                  <button type="button" class="lp-logo" id="lp-logo" aria-label="ZoomLens"><span class="glyph glyph-sm" aria-hidden="true"></span></button>
+                  <div class="lp-id">
+                    <span class="lp-name">ZoomLens</span>
+                    <span class="lp-state" id="lp-state">Viewing shared screen</span>
+                  </div>
+                  <button type="button" class="lp-close" id="lp-close" aria-label="Close ZoomLens" data-tip="Close ZoomLens">
+                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  </button>
                 </div>
-                <div class="lp-thread" id="thread" aria-live="polite"></div>
-                <div class="lp-input" aria-hidden="true">
-                  <span>Ask about the shared screen…</span><i>↑</i>
-                </div>
+                <div class="lp-thread" id="thread" role="log" aria-live="polite" aria-label="Conversation"></div>
+                <div class="lp-suggest" id="suggest" role="group" aria-label="Suggested questions"></div>
+                <form class="lp-form" id="ask-form" autocomplete="off">
+                  <label for="ask" class="sr-only">Ask about the shared screen</label>
+                  <input id="ask" type="text" maxlength="140" placeholder="Ask about the shared screen…">
+                  <button type="submit" aria-label="Send question">
+                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </form>
               </aside>
             </div>
 
-            <div class="m-controls" aria-hidden="true">
-              <button class="ctl" data-toggle>Mic</button>
-              <button class="ctl" data-toggle>Camera</button>
-              <span class="ctl">Participants</span>
-              <span class="ctl">Chat</span>
-              <span class="ctl ctl-share">Share</span>
-              <span class="ctl">More</span>
+            <div class="m-controls" role="toolbar" aria-label="Meeting controls, simulated">
+              <button type="button" class="ctl" id="ctl-mic" aria-pressed="false" aria-label="Mute microphone (simulated)" data-tip="Mute (simulated)">Mic</button>
+              <button type="button" class="ctl" id="ctl-cam" aria-pressed="false" aria-label="Stop video (simulated)" data-tip="Stop video (simulated)">Camera</button>
+              <span class="ctl ctl-inert" aria-hidden="true">Participants</span>
+              <span class="ctl ctl-inert" aria-hidden="true">Chat</span>
+              <span class="ctl ctl-inert ctl-share" aria-hidden="true">Share</span>
+              <button type="button" class="ctl ctl-lens" id="ctl-lens" aria-pressed="true" aria-label="ZoomLens panel" data-tip="Close ZoomLens"><span class="glyph glyph-xs" aria-hidden="true"></span>ZoomLens</button>
             </div>
           </div>
-          <p class="note">Interface demonstration. Answers shown are illustrative examples, not recorded model output.</p>
+          <p class="note">Interface demonstration. Questions are matched against a small set of example answers written for this page; no AI model is called.</p>
         </div>
       </div>
     </section>
@@ -146,32 +158,53 @@
       <div class="wrap">
         <p class="eyebrow">How it works</p>
         <h2>Four steps, none of them out loud.</h2>
-        <ol class="steps">
-          <li class="step">
-            <span class="num">01</span>
-            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-screen"></div></div></div>
-            <h3>Someone shares their screen</h3>
-            <p>A spreadsheet, a paper, a dashboard, a slide. Whatever they are presenting.</p>
-          </li>
-          <li class="step">
-            <span class="num">02</span>
-            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-panel"></div></div></div>
-            <h3>You open ZoomLens</h3>
-            <p>A panel inside your own meeting window. Use a shortcut, or type a question.</p>
-          </li>
-          <li class="step">
-            <span class="num">03</span>
-            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-screen focus"></div></div></div>
-            <h3>It reads the screen at that moment</h3>
-            <p>When you ask, ZoomLens takes an image of what is being shared right then and sends it, with your question, to a vision model.</p>
-          </li>
-          <li class="step">
-            <span class="num">04</span>
-            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-answer"></div></div></div>
-            <h3>The answer comes back to you</h3>
-            <p>Typically within a few seconds. Then ask a follow-up, and it builds on what it just told you.</p>
-          </li>
-        </ol>
+        <div class="how-grid">
+          <div class="how-steps" role="tablist" aria-label="How it works" aria-orientation="vertical">
+            <button role="tab" class="how-step" id="hs-share" data-step="share" aria-selected="true" aria-controls="how-viz">
+              <span class="num">01</span>
+              <span class="how-text"><b>Share</b><span>Someone shares their screen. A spreadsheet, a paper, a dashboard, a slide. Whatever they are presenting.</span></span>
+            </button>
+            <button role="tab" class="how-step" id="hs-focus" data-step="focus" aria-selected="false" aria-controls="how-viz" tabindex="-1">
+              <span class="num">02</span>
+              <span class="how-text"><b>Focus</b><span>You open ZoomLens. A panel inside your own meeting window, beside what is being shared.</span></span>
+            </button>
+            <button role="tab" class="how-step" id="hs-ask" data-step="ask" aria-selected="false" aria-controls="how-viz" tabindex="-1">
+              <span class="num">03</span>
+              <span class="how-text"><b>Ask</b><span>Use a shortcut or type a question. When you ask, ZoomLens takes an image of what is being shared right then and sends it, with your question, to a vision model.</span></span>
+            </button>
+            <button role="tab" class="how-step" id="hs-understand" data-step="understand" aria-selected="false" aria-controls="how-viz" tabindex="-1">
+              <span class="num">04</span>
+              <span class="how-text"><b>Understand</b><span>The answer comes back to you, typically within a few seconds. Then ask a follow-up, and it builds on what it just told you.</span></span>
+            </button>
+          </div>
+
+          <div class="how-viz" id="how-viz" role="tabpanel" aria-labelledby="hs-share" data-step="share">
+            <div class="hv-meeting" aria-hidden="true">
+              <div class="hv-top"><span>Weekly Product Review</span><span class="rec-dot"></span></div>
+              <div class="hv-body">
+                <div class="hv-stage">
+                  <div class="hv-tag">MK is sharing</div>
+                  <div class="hv-screen">
+                    <div class="hv-row h"></div>
+                    <div class="hv-row"></div>
+                    <div class="hv-row hot"></div>
+                    <div class="hv-row"></div>
+                    <div class="hv-row"></div>
+                  </div>
+                </div>
+                <div class="hv-panel">
+                  <div class="hv-ph"><span class="glyph glyph-xs"></span>ZoomLens</div>
+                  <div class="hv-thread">
+                    <div class="hv-q">What changed this quarter?</div>
+                    <div class="hv-dots"><i></i><i></i><i></i></div>
+                    <div class="hv-a">Enterprise rose the most, up 12% on Q2.</div>
+                  </div>
+                  <div class="hv-input"><span>Ask about the shared screen…</span><i></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -316,17 +349,23 @@
       <div class="wrap">
         <p class="eyebrow">Architecture</p>
         <h2>From the shared screen to one person's answer.</h2>
+        <p class="section-lede">Hover or tab through the pipeline to see what each part does.</p>
 
-        <div class="flow">
-          <div class="node"><div class="node-bar"><span>Zoom meeting</span></div><div class="node-body">Shared screen, and the ZoomLens panel in your meeting window</div></div>
-          <div class="link" aria-hidden="true"></div>
-          <div class="node"><div class="node-bar"><span>Screen capture</span></div><div class="node-body"><code>framebuffer.js</code> <code>screen.js</code><br>Recent video in memory, or the display</div></div>
-          <div class="link" aria-hidden="true"></div>
-          <div class="node"><div class="node-bar"><span>Decode</span></div><div class="node-body"><code>decode.js</code><br>Video to a still image on request</div></div>
-          <div class="link" aria-hidden="true"></div>
-          <div class="node"><div class="node-bar"><span>Answer</span></div><div class="node-body"><code>answer.js</code><br>Image and question to a vision model</div></div>
-          <div class="link" aria-hidden="true"></div>
-          <div class="node accent"><div class="node-bar"><span>Relay</span></div><div class="node-body"><code>relay.js</code><br>Addressed to one session, nobody else</div></div>
+        <div class="flow" id="flow" role="tablist" aria-label="Pipeline">
+          <div class="node" role="tab" tabindex="0" aria-selected="false" aria-controls="flow-explain" data-i="0"><div class="node-bar"><span>Zoom meeting</span></div><div class="node-body">Shared screen, and the ZoomLens panel in your meeting window</div></div>
+          <div class="link" aria-hidden="true" data-i="0"></div>
+          <div class="node" role="tab" tabindex="-1" aria-selected="false" aria-controls="flow-explain" data-i="1"><div class="node-bar"><span>Screen capture</span></div><div class="node-body"><code>framebuffer.js</code> <code>screen.js</code><br>Recent video in memory, or the display</div></div>
+          <div class="link" aria-hidden="true" data-i="1"></div>
+          <div class="node" role="tab" tabindex="-1" aria-selected="false" aria-controls="flow-explain" data-i="2"><div class="node-bar"><span>Decode</span></div><div class="node-body"><code>decode.js</code><br>Video to a still image on request</div></div>
+          <div class="link" aria-hidden="true" data-i="2"></div>
+          <div class="node" role="tab" tabindex="-1" aria-selected="false" aria-controls="flow-explain" data-i="3"><div class="node-bar"><span>Answer</span></div><div class="node-body"><code>answer.js</code><br>Image and question to a vision model</div></div>
+          <div class="link" aria-hidden="true" data-i="3"></div>
+          <div class="node accent" role="tab" tabindex="-1" aria-selected="false" aria-controls="flow-explain" data-i="4"><div class="node-bar"><span>Relay</span></div><div class="node-body"><code>relay.js</code><br>Addressed to one session, nobody else</div></div>
+        </div>
+
+        <div class="flow-explain" id="flow-explain" role="tabpanel" aria-live="polite">
+          <span class="fe-label" id="fe-label">The pipeline</span>
+          <p id="fe-text">A question travels from the panel to the server, which captures the shared screen, turns it into an image, asks a vision model, and returns the answer to the one person who asked.</p>
         </div>
 
         <p class="arch-foot">Node, Express and WebSockets on the server. Plain HTML, CSS and JavaScript in the panel, loaded by the Zoom Apps SDK. <a href="https://github.com/richithareddyy/ZoomLens">Source on GitHub</a>.</p>
