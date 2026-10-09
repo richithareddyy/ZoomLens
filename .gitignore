@@ -43,6 +43,7 @@ lib/linux-x64/*
 !screen.js
 !refresh-token.js
 !public/*.js
+!site/*.js
 
 scripts/**/*
 !scripts/common

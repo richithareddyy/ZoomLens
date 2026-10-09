@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZoomLens · Understand what's being shared</title>
+  <meta name="description" content="ZoomLens privately helps you understand spreadsheets, papers, presentations and dashboards being shared during a Zoom meeting, without interrupting it.">
+  <link rel="icon" href="lens.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap nav-row">
+      <a class="wordmark" href="#top" aria-label="ZoomLens home">
+        <span class="glyph" aria-hidden="true"></span><span>Zoom<b>Lens</b></span>
+      </a>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#private">Privacy</a></li>
+          <li><a href="#engineering">Engineering</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <a class="btn btn-primary btn-sm" href="#demo">See it in action</a>
+        <a class="icon-link" href="https://github.com/richithareddyy/ZoomLens" aria-label="ZoomLens on GitHub">
+          <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- HERO ============================================================ -->
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Built for Zoom meetings</p>
+          <h1>Understand what's<br>being shared.</h1>
+          <p class="lede">Without interrupting the meeting.</p>
+          <p class="body">ZoomLens privately helps you understand spreadsheets, papers, presentations and dashboards being shared during a Zoom meeting.</p>
+          <div class="cta">
+            <a class="btn btn-primary" href="#demo">See it in action</a>
+            <a class="btn btn-ghost" href="https://github.com/richithareddyy/ZoomLens">View on GitHub</a>
+          </div>
+        </div>
+
+        <div class="hero-demo" id="demo">
+          <div class="tabs" role="tablist" aria-label="What is being shared">
+            <button role="tab" class="tab" data-scene="sheet" aria-selected="true">Spreadsheet</button>
+            <button role="tab" class="tab" data-scene="paper" aria-selected="false">Research paper</button>
+            <button role="tab" class="tab" data-scene="dash" aria-selected="false">Dashboard</button>
+            <button role="tab" class="tab" data-scene="slides" aria-selected="false">Presentation</button>
+          </div>
+
+          <div class="seg" role="tablist" aria-label="View">
+            <button role="tab" class="seg-btn" data-pane="screen" aria-selected="true">Screen</button>
+            <button role="tab" class="seg-btn" data-pane="lens" aria-selected="false">ZoomLens</button>
+          </div>
+
+          <div class="meeting" data-pane-active="screen">
+            <div class="m-top">
+              <span class="m-title">Weekly Product Review</span>
+              <span class="m-meta"><span class="rec-dot" aria-hidden="true"></span>Sharing · 23:41</span>
+            </div>
+
+            <div class="m-body">
+              <div class="m-stage">
+                <div class="m-share-tag">MK is sharing their screen</div>
+                <div class="screen" id="screen" aria-live="polite"></div>
+                <div class="tiles" aria-label="Participants">
+                  <div class="tile"><span>AR</span></div>
+                  <div class="tile speaking"><span>MK</span><i class="talk" aria-hidden="true"></i></div>
+                  <div class="tile"><span>JL</span></div>
+                  <div class="tile you"><span>You</span></div>
+                </div>
+              </div>
+
+              <aside class="lens-panel" aria-label="ZoomLens panel">
+                <div class="lp-head">
+                  <span class="lp-name"><span class="glyph glyph-sm" aria-hidden="true"></span>ZoomLens</span>
+                  <span class="lp-state">Viewing shared screen</span>
+                </div>
+                <div class="lp-thread" id="thread" aria-live="polite"></div>
+                <div class="lp-input" aria-hidden="true">
+                  <span>Ask about the shared screen…</span><i>↑</i>
+                </div>
+              </aside>
+            </div>
+
+            <div class="m-controls" aria-hidden="true">
+              <button class="ctl" data-toggle>Mic</button>
+              <button class="ctl" data-toggle>Camera</button>
+              <span class="ctl">Participants</span>
+              <span class="ctl">Chat</span>
+              <span class="ctl ctl-share">Share</span>
+              <span class="ctl">More</span>
+            </div>
+          </div>
+          <p class="note">Interface demonstration. Answers shown are illustrative examples, not recorded model output.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- BRIDGE ========================================================== -->
+    <section class="bridge">
+      <div class="wrap">
+        <p class="bridge-line">Sometimes you don't need the meeting to stop.<br><span>You just need context.</span></p>
+      </div>
+    </section>
+
+    <!-- PROBLEM ========================================================= -->
+    <section class="problem band">
+      <div class="wrap two-col">
+        <div class="mini-meeting" aria-hidden="true">
+          <div class="mm-top"><span>Q3 Planning</span><span class="rec-dot"></span></div>
+          <div class="mm-screen">
+            <div class="mm-grid">
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span class="hot"></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span class="hot"></span><span></span>
+            </div>
+          </div>
+          <div class="mm-tiles"><i></i><i class="speaking"></i><i></i><i></i></div>
+        </div>
+        <div class="problem-copy">
+          <h2>You looked away for 30 seconds.</h2>
+          <p class="sub">Now everyone is discussing a number you don't recognise.</p>
+          <p class="muted">Normally you have three options.</p>
+          <ul class="options">
+            <li>Interrupt the speaker.</li>
+            <li>Ask someone else.</li>
+            <li>Keep listening and hope it makes sense.</li>
+          </ul>
+          <p class="reveal">ZoomLens gives you another one. <strong>Ask privately.</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS ===================================================== -->
+    <section class="how" id="how">
+      <div class="wrap">
+        <p class="eyebrow">How it works</p>
+        <h2>Four steps, none of them out loud.</h2>
+        <ol class="steps">
+          <li class="step">
+            <span class="num">01</span>
+            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-screen"></div></div></div>
+            <h3>Someone shares their screen</h3>
+            <p>A spreadsheet, a paper, a dashboard, a slide. Whatever they are presenting.</p>
+          </li>
+          <li class="step">
+            <span class="num">02</span>
+            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-panel"></div></div></div>
+            <h3>You open ZoomLens</h3>
+            <p>A panel inside your own meeting window. Use a shortcut, or type a question.</p>
+          </li>
+          <li class="step">
+            <span class="num">03</span>
+            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-screen focus"></div></div></div>
+            <h3>It reads the screen at that moment</h3>
+            <p>When you ask, ZoomLens takes an image of what is being shared right then and sends it, with your question, to a vision model.</p>
+          </li>
+          <li class="step">
+            <span class="num">04</span>
+            <div class="win"><div class="win-bar"></div><div class="win-body"><div class="sk sk-answer"></div></div></div>
+            <h3>The answer comes back to you</h3>
+            <p>Typically within a few seconds. Then ask a follow-up, and it builds on what it just told you.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- LENS ============================================================= -->
+    <section class="lens band" id="lens">
+      <div class="wrap">
+        <p class="eyebrow">Two ways to ask</p>
+        <h2>See the screen.<br>Understand the context.</h2>
+        <p class="section-lede">Describe tells you what is there. Explain tells you what it means. Hover or tab through the screen below.</p>
+
+        <div class="lens-stage">
+          <div class="lens-screen">
+            <div class="ls-head">Conversion · last 8 weeks</div>
+            <button class="hot-region r-kpis" data-say="Describe: three headline figures. Visits are up, conversion is down, and average order value is roughly flat.">
+              <div class="kpi"><small>Visits</small><b>48.2k</b><em class="up">+6%</em></div>
+              <div class="kpi"><small>Conversion</small><b>2.1%</b><em class="down">−0.8 pt</em></div>
+              <div class="kpi"><small>Avg. order</small><b>$64</b><em>+1%</em></div>
+            </button>
+            <button class="hot-region r-chart" data-say="Explain: traffic is rising while conversion falls, so more people are arriving but fewer are buying. That points at the experience after they land, not at acquisition.">
+              <svg viewBox="0 0 320 110" preserveAspectRatio="none" aria-hidden="true">
+                <polyline class="l-a" points="0,80 45,74 90,70 135,62 180,58 225,50 270,44 320,38"/>
+                <polyline class="l-b" points="0,30 45,32 90,31 135,40 180,52 225,63 270,72 320,80"/>
+              </svg>
+              <span class="legend"><i class="la"></i>Visits <i class="lb"></i>Conversion</span>
+            </button>
+            <button class="hot-region r-split" data-say="Explain: the drop is concentrated in one segment. Mobile conversion fell sharply while desktop held steady.">
+              <div class="bar-row"><span>Desktop</span><i style="--w:72%"></i><b>3.4%</b></div>
+              <div class="bar-row"><span>Mobile</span><i class="weak" style="--w:28%"></i><b>1.2%</b></div>
+            </button>
+          </div>
+          <div class="lens-callout" id="callout" aria-live="polite">
+            <span class="glyph glyph-sm" aria-hidden="true"></span>
+            <p>Point at part of the screen to see what ZoomLens might say about it.</p>
+          </div>
+        </div>
+        <p class="note">Illustrative. In the product you ask in words; the screen is not hoverable.</p>
+      </div>
+    </section>
+
+    <!-- PRIVATE ========================================================== -->
+    <section class="private" id="private">
+      <div class="wrap">
+        <p class="eyebrow">Private by design</p>
+        <h2>Ask without interrupting.</h2>
+
+        <div class="split-meeting">
+          <div class="sm-room">
+            <span class="sm-label">The meeting</span>
+            <div class="sm-screen"></div>
+            <div class="sm-people"><i></i><i class="speaking"></i><i></i><i></i></div>
+            <p>Everyone sees the shared screen and hears the speaker.</p>
+          </div>
+          <div class="sm-wall" aria-hidden="true"></div>
+          <div class="sm-you">
+            <span class="sm-label">Only you</span>
+            <div class="sm-bubble q">What changed this quarter?</div>
+            <div class="sm-bubble a">Enterprise shows the largest increase…</div>
+            <p>Your questions and answers are not shown to anyone else.</p>
+          </div>
+        </div>
+
+        <div class="facts">
+          <div class="fact-col">
+            <h3>What is guaranteed</h3>
+            <ul>
+              <li><strong>Answers reach only the person who asked.</strong> Every message the server sends is addressed to exactly one session. There is no broadcast anywhere.</li>
+              <li><strong>A reply cannot be redirected.</strong> The server refuses to deliver an answer unless it matches a request that session actually made.</li>
+              <li><strong>Enforced on the server, not the panel.</strong> Anything enforced in the panel could be changed by whoever runs it.</li>
+              <li><strong>Tested, including against its own failure.</strong> Seven cases, including ten participants asking at once. The protection was deliberately broken to confirm the tests catch it.</li>
+            </ul>
+          </div>
+          <div class="fact-col honest">
+            <h3>What is not</h3>
+            <ul>
+              <li><strong>The presenter is not notified.</strong> That is deliberate, and it is the main open question for ethical review.</li>
+              <li><strong>Screen images go to a third-party model</strong> to be interpreted, without filtering.</li>
+              <li><strong>Participant identity comes from the panel</strong> and is not yet independently verified.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENGINEERING ====================================================== -->
+    <section class="engineering band" id="engineering">
+      <div class="wrap">
+        <p class="eyebrow">Engineering</p>
+        <h2>Behind the meeting window.</h2>
+        <p class="section-lede">Here is what the user sees. This is what is happening underneath, and what was hard about it.</p>
+
+        <div class="stories">
+          <article class="story">
+            <h3>A video stream is not a stack of pictures</h3>
+            <dl>
+              <dt>Problem</dt><dd>Shared screens arrive as H.264, where one keyframe is a full image and everything after it is only a change. A single frame on its own is not decodable.</dd>
+              <dt>Implementation</dt><dd>An in-memory buffer keeps the latest parameter sets plus everything since the most recent keyframe, so it always holds a decodable clip. Two bugs surfaced: keyframes split across several units were being cut to their last fragment, and data arriving in chunks broke wherever a boundary fell across two.</dd>
+              <dt>Tradeoff</dt><dd>Memory is capped by size rather than count, and drops back to the keyframe when exceeded, so a busy screen costs more memory but never produces an undecodable image.</dd>
+            </dl>
+          </article>
+
+          <article class="story">
+            <h3>Privacy has to live where it cannot be edited</h3>
+            <dl>
+              <dt>Problem</dt><dd>The promise is that your answers reach you and nobody else. A promise enforced in the browser can be undone by whoever controls the browser.</dd>
+              <dt>Implementation</dt><dd>Every connection is bound to one participant when it opens. One function is the only way a message leaves the server, and it takes a session, not a socket. Replies are refused unless the request is outstanding on that session.</dd>
+              <dt>Tradeoff</dt><dd>Messages that several people need, such as a screen share starting, are sent to each person individually. Slower than broadcasting, but there is no broadcast to misuse.</dd>
+            </dl>
+          </article>
+
+          <article class="story">
+            <h3>A meeting stream that would not start</h3>
+            <dl>
+              <dt>Problem</dt><dd>Reading the meeting's media stream needs a capability enabled on the Zoom account. Requests to start it were accepted and then nothing arrived.</dd>
+              <dt>Implementation</dt><dd>Three sources, tried in order of how close each is to the real thing: the meeting stream, then the participant's own display, which works because Zoom draws the shared screen there, then a recording. Every answer says which source it used.</dd>
+              <dt>Tradeoff</dt><dd>Reading the display only sees what that machine sees, so it cannot run on a server. It is a bridge until the stream is enabled, and it is labelled as one.</dd>
+            </dl>
+          </article>
+
+          <article class="story">
+            <h3>Limits that a reload cannot reset</h3>
+            <dl>
+              <dt>Problem</dt><dd>Every question costs money and several seconds. Nothing stopped someone pressing the button repeatedly.</dd>
+              <dt>Implementation</dt><dd>A minimum gap between one participant's requests and a daily ceiling, counted per participant rather than per connection, so closing and reopening the panel does not start the count again.</dd>
+              <dt>Tradeoff</dt><dd>A genuine second question within a few seconds is refused. The panel says how long to wait rather than failing silently.</dd>
+            </dl>
+          </article>
+
+          <article class="story">
+            <h3>An assistant that described itself</h3>
+            <dl>
+              <dt>Problem</dt><dd>Reading the whole display captures the ZoomLens panel too, and early answers dutifully described the panel back to the person reading it.</dd>
+              <dt>Implementation</dt><dd>The model is told explicitly that the image may contain the meeting window, participant tiles and the ZoomLens panel, and to describe only what is being presented.</dd>
+              <dt>Tradeoff</dt><dd>It relies on an instruction rather than cropping. Cropping would be more certain but needs to know where the shared content sits, which varies by layout.</dd>
+            </dl>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARCHITECTURE ===================================================== -->
+    <section class="arch" id="architecture">
+      <div class="wrap">
+        <p class="eyebrow">Architecture</p>
+        <h2>From the shared screen to one person's answer.</h2>
+
+        <div class="flow">
+          <div class="node"><div class="node-bar"><span>Zoom meeting</span></div><div class="node-body">Shared screen, and the ZoomLens panel in your meeting window</div></div>
+          <div class="link" aria-hidden="true"></div>
+          <div class="node"><div class="node-bar"><span>Screen capture</span></div><div class="node-body"><code>framebuffer.js</code> <code>screen.js</code><br>Recent video in memory, or the display</div></div>
+          <div class="link" aria-hidden="true"></div>
+          <div class="node"><div class="node-bar"><span>Decode</span></div><div class="node-body"><code>decode.js</code><br>Video to a still image on request</div></div>
+          <div class="link" aria-hidden="true"></div>
+          <div class="node"><div class="node-bar"><span>Answer</span></div><div class="node-body"><code>answer.js</code><br>Image and question to a vision model</div></div>
+          <div class="link" aria-hidden="true"></div>
+          <div class="node accent"><div class="node-bar"><span>Relay</span></div><div class="node-body"><code>relay.js</code><br>Addressed to one session, nobody else</div></div>
+        </div>
+
+        <p class="arch-foot">Node, Express and WebSockets on the server. Plain HTML, CSS and JavaScript in the panel, loaded by the Zoom Apps SDK. <a href="https://github.com/richithareddyy/ZoomLens">Source on GitHub</a>.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-row">
+      <div>
+        <a class="wordmark" href="#top"><span class="glyph" aria-hidden="true"></span><span>Zoom<b>Lens</b></span></a>
+        <p class="foot-tag">Understand what's being shared.</p>
+      </div>
+      <ul class="foot-links">
+        <li><a href="https://github.com/richithareddyy/ZoomLens">GitHub</a></li>
+        <li><a href="https://portfolio-richitharekula-2711.vercel.app/">Portfolio</a></li>
+        <li><a href="https://www.linkedin.com/in/richitha-rekula/">LinkedIn</a></li>
+      </ul>
+    </div>
+    <div class="wrap foot-base">
+      <span>Built by Richitha Rekula</span>
+      <span>Independent project. Not affiliated with or endorsed by Zoom.</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
