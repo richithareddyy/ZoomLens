@@ -911,9 +911,19 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* The meeting keeps one size. Answers scroll inside the panel instead of
    stretching the window, and the shared screen fills the space it is given. */
 @media (min-width: 761px) {
-  .m-body { height: 520px; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .m-body { height: 520px; min-height: 0; grid-template-rows: minmax(0, 1fr); grid-template-columns: 1fr clamp(244px, calc(100% - 315px), 320px); }
+  .demo-labels { grid-template-columns: 1fr clamp(244px, calc(100% - 315px), 320px); }
+  .meeting.lens-closed .m-body, .as-presenter .m-body { grid-template-columns: 1fr 0; }
   .lens-panel { min-height: 0; overflow: hidden; }
   .m-stage { min-height: 0; }
+}
+
+/* A narrow shared screen tightens the spreadsheet rather than overflowing it. */
+.screen { container-type: inline-size; }
+@container (max-width: 330px) {
+  .sheet { font-size: 0.7rem; }
+  .sheet th, .sheet td { padding: 5px 3px; }
+  .sheet th { font-size: 0.64rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
