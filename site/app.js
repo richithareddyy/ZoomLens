@@ -964,7 +964,6 @@ $("#lp-logo").addEventListener("click", () => {
 
 const howSteps = [...document.querySelectorAll(".how-step")];
 const howViz = $("#how-viz");
-const finePointer = matchMedia("(hover: hover) and (pointer: fine)").matches;
 
 function setStep(i) {
   howSteps.forEach((s, j) => {
@@ -974,10 +973,30 @@ function setStep(i) {
   howViz.dataset.step = howSteps[i].dataset.step;
   howViz.setAttribute("aria-labelledby", howSteps[i].id);
 }
+// Only the chosen step shows its description, and they differ in length.
+// Reserve the tallest so the page below does not move when the step changes.
+const howList = $(".how-steps");
+function reserveHowHeight() {
+  howList.style.minHeight = "";
+  const chosen = howSteps.findIndex((s) => s.getAttribute("aria-selected") === "true");
+  let tallest = 0;
+  howSteps.forEach((_, i) => {
+    setStep(i);
+    tallest = Math.max(tallest, howList.offsetHeight);
+  });
+  setStep(Math.max(0, chosen));
+  howList.style.minHeight = `${tallest}px`;
+}
+reserveHowHeight();
+let howResize = null;
+addEventListener("resize", () => {
+  clearTimeout(howResize);
+  howResize = setTimeout(reserveHowHeight, 150);
+});
+
 howSteps.forEach((s, i) => {
   s.addEventListener("click", () => setStep(i));
   s.addEventListener("focus", () => setStep(i));
-  if (finePointer) s.addEventListener("mouseenter", () => setStep(i));
   s.addEventListener("keydown", (e) => {
     const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
     if (!step) return;
