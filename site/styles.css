@@ -361,7 +361,7 @@ button.ctl:hover { background: #2E323B; }
 .slide-title h4 { margin: 0; }
 
 /* ===========================================================================
-   The Zoom Lens panel, matched to the real product (public/index.html).
+   The ZoomLens panel, matched to the real product (public/index.html).
    Same tokens, same structure, same labels. Scoped so it does not touch the
    site's own light palette.
 =========================================================================== */
