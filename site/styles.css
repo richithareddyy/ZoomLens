@@ -37,7 +37,7 @@ a { color: var(--blue-ink); }
 h1, h2, h3 { letter-spacing: -0.02em; line-height: 1.15; margin: 0; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 4px; }
 
-.wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 24px; }
 .skip { position: absolute; left: -999px; top: 8px; background: var(--text); color: #fff; padding: 8px 12px; border-radius: 6px; z-index: 50; }
 .skip:focus { left: 8px; }
 
@@ -924,6 +924,11 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
   .sheet { font-size: 0.7rem; }
   .sheet th, .sheet td { padding: 5px 3px; }
   .sheet th { font-size: 0.64rem; }
+}
+
+/* On wide screens the demo gets the extra room; the text keeps its width. */
+@media (min-width: 1200px) {
+  .hero-grid { grid-template-columns: 0.74fr 1.26fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
