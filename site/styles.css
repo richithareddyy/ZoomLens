@@ -859,17 +859,6 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* ===========================================================================
    First impression: what it is, then what using it looks like
 =========================================================================== */
-.hero-steps {
-  list-style: none; margin: 0 0 26px; padding: 0;
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  max-width: 470px; border-top: 1px solid var(--line); counter-reset: step;
-}
-.hero-steps li { padding: 10px 12px 0 0; counter-increment: step; }
-.hero-steps li + li { padding-left: 12px; border-left: 1px solid var(--line); }
-.hero-steps b { display: block; font-size: 0.86rem; color: var(--text); }
-.hero-steps b::before { content: counter(step) " "; font: 600 0.72rem var(--mono); color: var(--blue-ink); }
-.hero-steps span { display: block; font-size: 0.84rem; line-height: 1.4; color: var(--text-2); }
-
 .demo-top { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .demo-top .tabs { margin-bottom: 0; }
 .demo-flag {
@@ -899,8 +888,6 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 @media (max-width: 760px) {
   .demo-flag { margin-left: 0; }
   .demo-labels { display: none; }
-  .hero-steps li { padding-right: 8px; }
-  .hero-steps li + li { padding-left: 8px; }
   /* On a phone the screen and the panel stack, so the answer is visible without switching views. */
   .seg { display: none; }
   .meeting[data-pane] .m-stage { display: flex; }
@@ -929,6 +916,28 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* On wide screens the demo gets the extra room; the text keeps its width. */
 @media (min-width: 1200px) {
   .hero-grid { grid-template-columns: 0.74fr 1.26fr; }
+}
+
+/* ===========================================================================
+   First screen: the message on its own. The demo follows in its own section.
+=========================================================================== */
+.hero { min-height: calc(100svh - 64px); display: flex; align-items: center; padding: 48px 0 64px; }
+.hero > .wrap { width: 100%; }
+.hero .hero-grid { grid-template-columns: 1fr; }
+.hero .hero-copy { padding-top: 0; max-width: 880px; margin: 0 auto; text-align: center; }
+.hero h1 { font-size: clamp(2.3rem, 4.8vw, 4rem); max-width: 26ch; margin: 0 auto; text-wrap: balance; }
+.hero .body { max-width: 560px; margin: 20px auto 30px; font-size: clamp(1.08rem, 1.4vw, 1.25rem); }
+.hero .cta { justify-content: center; }
+
+.demo-section { padding: 72px 0 88px; }
+.demo-head { text-align: center; margin-bottom: 28px; }
+.demo-head h2 { margin: 0; }
+.demo-section .hero-demo { max-width: 1080px; margin: 0 auto; }
+
+@media (max-width: 760px) {
+  .hero { padding: 32px 0 48px; }
+  .demo-section { padding: 48px 0 64px; }
+  .demo-head { margin-bottom: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
