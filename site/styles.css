@@ -817,7 +817,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 .as-presenter .sheet .fc { background: #F7F9FC; }
 
 /* The figure can be explored one training size at a time */
-.paper-fig { height: 104px; padding: 8px 8px 20px; gap: 12px; }
+.paper-fig { height: 90px; padding: 8px 8px 20px; gap: 12px; }
 .paper-fig .pair {
   position: relative; flex: 1; display: flex; align-items: flex-end; gap: 3px; height: 100%;
   background: none; opacity: 1; border-radius: 4px; cursor: pointer; transition: background .2s, opacity .25s;
@@ -906,6 +906,14 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
   .meeting[data-pane] .m-stage { display: flex; }
   .meeting[data-pane] .lens-panel { display: flex; visibility: visible; min-height: 0; height: 420px; border-top: 1px solid #2E323B; }
   .meeting.lens-closed .lens-panel, .as-presenter .meeting[data-pane] .lens-panel { display: none; }
+}
+
+/* The meeting keeps one size. Answers scroll inside the panel instead of
+   stretching the window, and the shared screen fills the space it is given. */
+@media (min-width: 761px) {
+  .m-body { height: 520px; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .lens-panel { min-height: 0; overflow: hidden; }
+  .m-stage { min-height: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
