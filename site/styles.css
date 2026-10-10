@@ -512,7 +512,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 .how-viz[data-step="understand"] .hv-a { opacity: 1; transform: none; }
 
 /* Architecture: the path lights up to whatever you point at --------------- */
-.node { cursor: default; transition: border-color .2s, box-shadow .2s, opacity .2s; }
+.node { cursor: pointer; transition: border-color .2s, box-shadow .2s, opacity .2s; }
 .node:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .flow.tracing .node:not(.lit) { opacity: .45; }
 .node.lit { border-color: var(--blue); }

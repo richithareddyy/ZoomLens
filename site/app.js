@@ -1006,7 +1006,7 @@ howSteps.forEach((s, i) => {
   });
 });
 
-// --- Architecture: trace the path to whatever is pointed at -----------------
+// --- Architecture: trace the path to whatever is chosen -----------------
 
 const ARCH = [
   ["Zoom meeting",
@@ -1038,7 +1038,6 @@ function trace(i) {
   $("#fe-text").textContent = text;
 }
 nodes.forEach((n, i) => {
-  n.addEventListener("mouseenter", () => trace(i));
   n.addEventListener("focus", () => {
     nodes.forEach((m, j) => (m.tabIndex = j === i ? 0 : -1));
     trace(i);
@@ -1050,9 +1049,6 @@ nodes.forEach((n, i) => {
     e.preventDefault();
     nodes[(i + step + nodes.length) % nodes.length].focus();
   });
-});
-flow.addEventListener("mouseleave", () => {
-  if (!nodes.includes(document.activeElement)) trace(null);
 });
 flow.addEventListener("focusout", (e) => {
   if (!flow.contains(e.relatedTarget)) trace(null);
@@ -1136,7 +1132,7 @@ function tlRun() {
 }
 tlRunBtn.addEventListener("click", tlRun);
 
-// --- Lens section: pointing at regions --------------------------------------
+// --- Lens section: choosing regions --------------------------------------
 
 const callout = $("#callout p");
 const regions = [...document.querySelectorAll(".hot-region")];
@@ -1146,12 +1142,8 @@ function point(region) {
   callout.textContent = region ? region.dataset.say : defaultCallout;
 }
 regions.forEach((r) => {
-  r.addEventListener("mouseenter", () => point(r));
   r.addEventListener("focus", () => point(r));
   r.addEventListener("click", () => point(r));
-});
-$(".lens-screen").addEventListener("mouseleave", () => {
-  if (!regions.includes(document.activeElement)) point(null);
 });
 
 // --- Scroll: reveal whole sections, never individual paragraphs -------------
