@@ -459,7 +459,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 .meeting.focus-mode .screen { box-shadow: 0 0 0 2px var(--blue), 0 0 0 7px rgba(45,140,255,.18); transition: box-shadow .4s; }
 
 /* How it works: one meeting, four states ---------------------------------- */
-.how-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 40px; align-items: center; margin-top: 36px; }
+.how-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 40px; align-items: start; margin-top: 36px; }
 .how-steps { display: grid; gap: 8px; }
 .how-step {
   display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start;
@@ -489,13 +489,16 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 .hv-q, .hv-a { font-size: 0.7rem; border-radius: 7px; padding: 6px 8px; opacity: 0; transform: translateY(3px); transition: opacity .25s, transform .25s; }
 .hv-q { align-self: flex-end; background: var(--blue-wash); }
 .hv-a { background: var(--bg-2); border-left: 2px solid var(--blue); }
-.hv-dots { display: none; gap: 3px; padding: 4px; }
+.hv-dots { display: inline-flex; visibility: hidden; gap: 3px; padding: 4px; }
 .hv-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); animation: dot 1s ease-in-out infinite; }
 .hv-dots i:nth-child(2) { animation-delay: .15s } .hv-dots i:nth-child(3) { animation-delay: .3s }
 .hv-input { margin: 0 9px 9px; padding: 6px 6px 6px 9px; border: 1px solid var(--line-ui); border-radius: 7px; display: flex; justify-content: space-between; align-items: center; font-size: 0.66rem; color: var(--text-2); white-space: nowrap; transition: border-color .25s, box-shadow .25s; }
 .hv-input i { width: 16px; height: 16px; border-radius: 4px; background: var(--blue-ink); flex: none; }
 .hv-input span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .hv-panel, .hv-stage { min-width: 0; }
+/* The panel slides in from zero width. Its contents keep a real width while
+   hidden, so they never wrap a letter at a time and stretch the picture. */
+.hv-ph, .hv-thread, .hv-input { min-width: 150px; }
 .hv-q, .hv-a { max-width: 100%; overflow-wrap: anywhere; }
 
 .how-viz[data-step="share"] .hv-screen { outline-color: var(--blue); }
@@ -505,7 +508,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 .how-viz:is([data-step="focus"], [data-step="ask"], [data-step="understand"]) .hv-row.hot { background: var(--blue-wash); box-shadow: 0 0 0 2px var(--blue); }
 .how-viz[data-step="ask"] .hv-input { border-color: var(--blue-ink); box-shadow: 0 0 0 3px rgba(45,140,255,.15); }
 .how-viz:is([data-step="ask"], [data-step="understand"]) .hv-q { opacity: 1; transform: none; }
-.how-viz[data-step="ask"] .hv-dots { display: inline-flex; }
+.how-viz[data-step="ask"] .hv-dots { visibility: visible; }
 .how-viz[data-step="understand"] .hv-a { opacity: 1; transform: none; }
 
 /* Architecture: the path lights up to whatever you point at --------------- */
