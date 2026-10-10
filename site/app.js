@@ -197,7 +197,7 @@ const SCENES = {
         <h4 class="ctx">Scaling Behaviour of Retrieval-Augmented Models</h4>
         <p class="sub ctx">Section 4 · Results</p>
         <div ${trig("text", "the section text", "block paper-text")}>
-          <span class="line" style="width:96%"></span><span class="line" style="width:88%"></span><span class="line" style="width:92%"></span>
+          <span class="line" style="width:96%"></span><span class="line" style="width:88%"></span>
         </div>
         <p ${trig("result", "the results sentence", "paper-result")}>The retrieval-augmented method leads by 31 points at the largest training size.</p>
         ${figureHTML()}
