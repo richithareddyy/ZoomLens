@@ -1409,6 +1409,199 @@ flow.addEventListener("focusout", (e) => {
   if (!flow.contains(e.relatedTarget)) trace(null);
 });
 
+// --- Engineering: each problem with a small simulation of how it is solved ---
+// These run in the browser and only model the mechanism; the numbers used are
+// the real defaults (a 5 second gap and 60 questions a day).
+
+const engTabs = [...document.querySelectorAll(".eng-tab")];
+function selectEng(i, focus = false) {
+  engTabs.forEach((t, j) => {
+    t.setAttribute("aria-selected", String(i === j));
+    t.tabIndex = i === j ? 0 : -1;
+    $("#" + t.getAttribute("aria-controls")).hidden = i !== j;
+  });
+  if (focus) engTabs[i].focus();
+}
+engTabs.forEach((t, i) => {
+  t.addEventListener("click", () => selectEng(i));
+  t.addEventListener("keydown", (e) => {
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    selectEng((i + step + engTabs.length) % engTabs.length, true);
+  });
+});
+
+// A two-option switch inside a simulation.
+function simSwitch(root, attr, onChange) {
+  const opts = [...root.querySelectorAll(`[data-${attr}]`)];
+  opts.forEach((b) => b.addEventListener("click", () => {
+    opts.forEach((o) => o.setAttribute("aria-checked", String(o === b)));
+    onChange(b.dataset[attr]);
+  }));
+  return () => opts.find((o) => o.getAttribute("aria-checked") === "true").dataset[attr];
+}
+
+// 1. A video stream is not a stack of pictures.
+(() => {
+  const root = $('[data-sim="stream"]');
+  if (!root) return;
+  const units = Array.from({ length: 24 }, (_, i) =>
+    i === 0 ? "SPS" : i === 1 ? "PPS" : (i - 2) % 8 === 0 ? "I" : "P");
+  const list = root.querySelector(".units");
+  list.innerHTML = units.map((u) => `<li class="u-${u.toLowerCase()}">${u}</li>`).join("");
+  const cells = [...list.children];
+  const range = root.querySelector("input[type=range]");
+  const out = root.querySelector(".sim-result");
+  const keep = simSwitch(root, "keep", draw);
+
+  function draw() {
+    const now = Number(range.value);
+    let key = now;
+    while (units[key] !== "I") key--;
+    const kept = keep() === "last" ? [now] : [0, 1, ...Array.from({ length: now - key + 1 }, (_, i) => key + i)];
+    cells.forEach((c, i) => {
+      c.classList.toggle("future", i > now);
+      c.classList.toggle("kept", kept.includes(i));
+    });
+    const ok = keep() === "clip" || units[now] === "I";
+    root.classList.toggle("bad", !ok);
+    out.textContent = keep() === "last"
+      ? (units[now] === "I"
+        ? "Decodable, but only by luck: the latest unit happens to be a keyframe."
+        : "Not decodable. A P unit only describes how the picture changed since earlier ones.")
+      : `Decodable: the parameter sets, the latest keyframe and the ${now - key} changes since it. ${kept.length} units in memory.`;
+  }
+  range.addEventListener("input", draw);
+  draw();
+})();
+
+// 2. Privacy has to live where it cannot be edited.
+(() => {
+  const root = $('[data-sim="privacy"]');
+  if (!root) return;
+  const log = root.querySelector(".sim-log");
+  const box = (who) => root.querySelector(`[data-who="${who}"]`);
+  let asked = false;
+  const say = (lines, who, got, ok) => {
+    // lines[0] is the outcome, lines[1] what was attempted; newest shows first.
+    lines.forEach((l, i) => {
+      const li = document.createElement("li");
+      li.textContent = l;
+      if (i === 0 && !ok) li.className = "refused";
+      log.prepend(li);
+    });
+    while (log.children.length > 6) log.lastChild.remove();
+    const b = box(who);
+    b.querySelector("[data-got]").textContent = got;
+    b.classList.remove("hit", "no");
+    void b.offsetWidth;
+    b.classList.add(ok ? "hit" : "no");
+  };
+  root.querySelector('[data-act="ask"]').addEventListener("click", () => {
+    asked = true;
+    say(["Server sends the answer to your session only. AR and JL receive nothing.",
+         "You ask. The request is recorded on your session."], "you", "Your answer", true);
+  });
+  root.querySelector('[data-act="snoop"]').addEventListener("click", () => {
+    say(["Refused. There is no way to send to everyone: every message is addressed to one session.",
+         "JL's modified panel asks to receive all answers."], "jl", "Refused", false);
+  });
+  root.querySelector('[data-act="steal"]').addEventListener("click", () => {
+    say([asked
+      ? "Refused. That request belongs to your session, not JL's, so the reply cannot go to JL."
+      : "Refused. No request with that id is waiting on JL's session.",
+      "JL sends your request id from JL's own session."], "jl", "Refused", false);
+  });
+})();
+
+// 3. A meeting stream that would not start.
+(() => {
+  const root = $('[data-sim="sources"]');
+  if (!root) return;
+  const SRC = {
+    stream: ["Meeting stream", "Answers are labelled as coming from the meeting's screen share."],
+    display: ["Your own display", "Answers are labelled as coming from your display, not the meeting stream. The capture can include anything else on your screen."],
+    recording: ["A recording", "Answers are labelled as coming from a recording, not the live meeting."],
+  };
+  const boxes = [...root.querySelectorAll("[data-src]")];
+  const name = root.querySelector("[data-src-name]");
+  const label = root.querySelector("[data-src-label]");
+  function draw() {
+    const first = boxes.find((b) => b.checked);
+    boxes.forEach((b) => b.closest("li").classList.toggle("used", b === first));
+    if (!first) {
+      name.textContent = "No source";
+      label.textContent = "ZoomLens says it cannot see a shared screen instead of guessing.";
+      return;
+    }
+    [name.textContent, label.textContent] = SRC[first.dataset.src];
+  }
+  boxes.forEach((b) => b.addEventListener("change", draw));
+  draw();
+})();
+
+// 4. Limits that a reload cannot reset.
+(() => {
+  const root = $('[data-sim="limits"]');
+  if (!root) return;
+  const GAP = 5, CAP = 60;
+  const askBtn = root.querySelector('[data-lim="ask"]');
+  const count = root.querySelector("[data-lim-count]");
+  const fill = root.querySelector("[data-lim-fill]");
+  const msg = root.querySelector("[data-lim-msg]");
+  let used = 0, last = -Infinity, tick = null;
+  const mode = simSwitch(root, "count", () => {
+    used = 0; last = -Infinity; draw();
+    msg.textContent = "Counter cleared. Ask a few times, then try reopening the panel.";
+  });
+  const wait = () => Math.max(0, Math.ceil(GAP - (Date.now() - last) / 1000));
+  function draw() {
+    count.textContent = `${used} / ${CAP}`;
+    fill.style.width = `${(used / CAP) * 100}%`;
+    const w = wait();
+    askBtn.textContent = w ? `Ask (wait ${w}s)` : "Ask";
+    if (!w && tick) { clearInterval(tick); tick = null; }
+  }
+  askBtn.addEventListener("click", () => {
+    const w = wait();
+    if (w) { msg.textContent = `Refused. The panel says: wait ${w} more second${w === 1 ? "" : "s"}.`; return; }
+    if (used >= CAP) { msg.textContent = "Refused. The daily limit is reached."; return; }
+    used += 1; last = Date.now();
+    msg.textContent = `Answered. The next question is allowed in ${GAP} seconds.`;
+    if (!tick) tick = setInterval(draw, 250);
+    draw();
+  });
+  root.querySelector('[data-lim="reopen"]').addEventListener("click", () => {
+    if (mode() === "connection") {
+      used = 0; last = -Infinity;
+      msg.textContent = "Reopened. A new connection, so the count and the wait started again from zero. Reopening is a way around the limit.";
+    } else {
+      msg.textContent = `Reopened. Still ${used} of ${CAP} today${wait() ? `, and still ${wait()} seconds to wait` : ""}: both are counted per participant, not per connection.`;
+    }
+    draw();
+  });
+  draw();
+})();
+
+// 5. An assistant that described itself.
+(() => {
+  const root = $('[data-sim="self"]');
+  if (!root) return;
+  const answer = root.querySelector("[data-self-a]");
+  const capture = root.querySelector(".capture");
+  const A = {
+    off: "A Zoom meeting. On the right is a panel called ZoomLens with Describe screen and Explain this buttons and an earlier answer. Behind it, a slide is being shared.",
+    on: "A slide comparing three deployment options, with the middle one highlighted as the recommendation.",
+  };
+  const draw = (v) => {
+    answer.textContent = A[v];
+    capture.dataset.about = v === "on" ? "share" : "panel";
+  };
+  simSwitch(root, "ins", draw);
+  draw("on");
+})();
+
 // --- Timing: where the wait goes ---------------------------------------------
 // Decode time is drawn from the range measured in testing. Model time is what
 // the panel's waiting state is set for (EXPECTED_SECONDS in relay.js).
@@ -1504,7 +1697,7 @@ regions.forEach((r) => {
 // --- Scroll: reveal whole sections, never individual paragraphs -------------
 
 const toReveal = document.querySelectorAll(
-  ".problem-copy, .mini-meeting, .how-grid, .lens-stage, .split-meeting, .facts, .stories, .flow, .tl, .faq-list");
+  ".problem-copy, .mini-meeting, .how-grid, .lens-stage, .split-meeting, .facts, .eng, .flow, .tl, .faq-list");
 if ("IntersectionObserver" in window && !reduceMotion) {
   toReveal.forEach((el) => el.classList.add("rise"));
   const io = new IntersectionObserver((entries) => {
