@@ -69,6 +69,10 @@
             </div>
 
             <div class="m-body">
+              <div class="away-veil" aria-hidden="true">
+                <p><b>You looked away</b><span>MK keeps presenting</span></p>
+                <i class="away-bar"></i>
+              </div>
               <div class="m-stage">
                 <div class="m-stage-top">
                   <div class="m-share-tag">MK is sharing their screen</div>
@@ -77,7 +81,7 @@
                   </button>
                 </div>
                 <div class="screen" id="screen" role="region" aria-label="Shared screen"></div>
-                <p class="spot-hint" aria-hidden="true"><span class="hint-fine">Select part of the screen, or drag a box around anything</span><span class="hint-touch">Tap part of the screen, or use Draw a box</span></p>
+                <p class="spot-hint" id="spot-hint" aria-hidden="true"><span class="hint-fine">Select part of the screen, or drag a box around anything</span><span class="hint-touch">Tap part of the screen, or use Draw a box</span></p>
                 <p class="pv-strip" id="pv-strip" aria-live="polite"></p>
                 <div class="tiles" aria-label="Participants">
                   <div class="tile"><span>AR</span></div>
@@ -127,10 +131,35 @@
             </div>
           </div>
           <div class="viewbar">
+            <button type="button" class="btn btn-primary btn-sm" id="away-btn">Look away for 20 seconds</button>
             <button type="button" class="btn btn-ghost btn-sm" id="view-toggle" aria-pressed="false" aria-controls="meeting">See it as the presenter</button>
             <p id="view-note">This is your view, with ZoomLens open.</p>
           </div>
-          <p class="note">Interface demonstration. Questions are matched against a small set of example answers written for this page; no AI model is called.</p>
+          <p class="sr-only" id="away-status" role="status" aria-live="polite"></p>
+          <p class="note">Interface demonstration. Every answer here is written for this page and chosen by matching your question; no AI model is called.</p>
+          <details class="today">
+            <summary>What's in ZoomLens today, and what's a concept</summary>
+            <div class="today-cols">
+              <div>
+                <h4>In ZoomLens today</h4>
+                <ul>
+                  <li>Describe screen and Explain this</li>
+                  <li>Typed questions, and follow-ups that build on the last answer</li>
+                  <li>Answers only you see, without the presenter being told</li>
+                </ul>
+              </div>
+              <div>
+                <h4>Concepts shown here</h4>
+                <ul>
+                  <li>Selecting part of the screen, or drawing a box around it</li>
+                  <li>Answers that link back to the screen</li>
+                  <li>Suggested questions</li>
+                  <li>Noticing screen changes and catching you up</li>
+                </ul>
+              </div>
+            </div>
+            <p>ZoomLens reads the screen at the moment you ask and does not track how it changes over time. Catching you up would mean keeping recent screens, which raises privacy questions that would need answers first.</p>
+          </details>
         </div>
       </div>
     </section>
@@ -469,7 +498,7 @@
       </div>
       <ul class="foot-links">
         <li><a href="https://github.com/richithareddyy/ZoomLens">GitHub</a></li>
-        <li><a href="https://portfolio-richitharekula-2711.vercel.app/">Portfolio</a></li>
+        <li><a href="https://richitharekula.vercel.app/">Portfolio</a></li>
         <li><a href="https://www.linkedin.com/in/richitha-rekula/">LinkedIn</a></li>
       </ul>
     </div>
