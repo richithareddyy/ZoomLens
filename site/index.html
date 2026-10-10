@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZoomLens · Understand what's being shared</title>
   <meta name="description" content="ZoomLens privately helps you understand spreadsheets, papers, presentations and dashboards being shared during a Zoom meeting, without interrupting it.">
-  <link rel="icon" href="lens.svg" type="image/svg+xml">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,6 +21,7 @@
           <li><a href="#how">How it works</a></li>
           <li><a href="#private">Privacy</a></li>
           <li><a href="#engineering">Engineering</a></li>
+          <li><a href="#faq">FAQ</a></li>
         </ul>
       </nav>
       <div class="nav-actions">
@@ -69,9 +70,15 @@
 
             <div class="m-body">
               <div class="m-stage">
-                <div class="m-share-tag">MK is sharing their screen</div>
+                <div class="m-stage-top">
+                  <div class="m-share-tag">MK is sharing their screen</div>
+                  <button type="button" class="draw-btn" id="draw-btn" aria-pressed="false">
+                    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M2 5V3a1 1 0 0 1 1-1h2M11 2h2a1 1 0 0 1 1 1v2M14 11v2a1 1 0 0 1-1 1h-2M5 14H3a1 1 0 0 1-1-1v-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Draw a box
+                  </button>
+                </div>
                 <div class="screen" id="screen" role="region" aria-label="Shared screen"></div>
-                <p class="spot-hint" aria-hidden="true">Select part of the screen to ask about it</p>
+                <p class="spot-hint" aria-hidden="true"><span class="hint-fine">Select part of the screen, or drag a box around anything</span><span class="hint-touch">Tap part of the screen, or use Draw a box</span></p>
+                <p class="pv-strip" id="pv-strip" aria-live="polite"></p>
                 <div class="tiles" aria-label="Participants">
                   <div class="tile"><span>AR</span></div>
                   <div class="tile speaking"><span>MK</span><i class="talk" aria-hidden="true"></i></div>
@@ -118,6 +125,10 @@
               <span class="ctl ctl-inert ctl-share" aria-hidden="true">Share</span>
               <button type="button" class="ctl ctl-lens" id="ctl-lens" aria-pressed="true" aria-label="ZoomLens panel" data-tip="Close ZoomLens"><span class="glyph glyph-xs" aria-hidden="true"></span>ZoomLens</button>
             </div>
+          </div>
+          <div class="viewbar">
+            <button type="button" class="btn btn-ghost btn-sm" id="view-toggle" aria-pressed="false" aria-controls="meeting">See it as the presenter</button>
+            <p id="view-note">This is your view, with Zoom Lens open.</p>
           </div>
           <p class="note">Interface demonstration. Questions are matched against a small set of example answers written for this page; no AI model is called.</p>
         </div>
@@ -376,6 +387,75 @@
         </div>
 
         <p class="arch-foot">Node, Express and WebSockets on the server. Plain HTML, CSS and JavaScript in the panel, loaded by the Zoom Apps SDK. <a href="https://github.com/richithareddyy/ZoomLens">Source on GitHub</a>.</p>
+      </div>
+    </section>
+
+    <!-- TIMING ========================================================= -->
+    <section class="timing band" id="timing">
+      <div class="wrap">
+        <p class="eyebrow">Timing</p>
+        <h2>Most of the wait is the model.</h2>
+        <p class="section-lede">The shared screen is already in memory when you ask, and turning it into an image takes a fraction of a second. Run one question through to see where the time goes.</p>
+
+        <div class="tl">
+          <div class="tl-controls">
+            <div class="tl-modes" role="radiogroup" aria-label="Kind of question">
+              <button type="button" class="tl-mode" role="radio" aria-checked="true" data-mode="describe">Describe screen</button>
+              <button type="button" class="tl-mode" role="radio" aria-checked="false" data-mode="explain">Explain this</button>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="tl-run">Run a question</button>
+            <span class="tl-clock" id="tl-clock" aria-hidden="true">0.00 s</span>
+          </div>
+
+          <ol class="tl-stages">
+            <li class="tl-stage" data-stage="buffer"><b>Frame from memory</b><span class="tl-t">already there</span><small>The latest decodable video is kept in memory, so nothing waits for the next frame.</small></li>
+            <li class="tl-stage" data-stage="decode"><b>Decode</b><span class="tl-t">25 to 110 ms</span><small>Video to one still image. Measured in testing.</small></li>
+            <li class="tl-stage" data-stage="model"><b>Vision model</b><span class="tl-t">about 6 s</span><small>The image and the question are read and answered.</small></li>
+            <li class="tl-stage" data-stage="relay"><b>To you, and only you</b><span class="tl-t">one message</span><small>Addressed to the session that asked.</small></li>
+          </ol>
+
+          <div class="tl-bar" aria-hidden="true">
+            <i class="tl-seg-decode" id="tl-seg-decode"></i><i class="tl-seg-model"></i>
+            <span class="tl-fill" id="tl-fill"></span>
+          </div>
+          <div class="tl-legend" aria-hidden="true"><span><i class="k-decode"></i>Decode</span><span><i class="k-model"></i>Vision model</span></div>
+          <p class="tl-status" id="tl-status" role="status" aria-live="polite"></p>
+        </div>
+        <p class="note">Decode times are drawn from the range measured in testing. Model times are what the panel's waiting state is set for; real answers vary. Nothing here calls a model.</p>
+      </div>
+    </section>
+
+    <!-- FAQ ============================================================ -->
+    <section class="faq" id="faq">
+      <div class="wrap">
+        <p class="eyebrow">Questions</p>
+        <h2>What people ask first.</h2>
+        <div class="faq-list">
+          <details>
+            <summary>Does the presenter know I'm asking?</summary>
+            <p>No. ZoomLens does not notify the presenter, and your questions and answers are sent only to you. Whether presenters should be told is the main open question for ethical review.</p>
+          </details>
+          <details>
+            <summary>Can other people in the meeting see my questions?</summary>
+            <p>No. Every message the server sends is addressed to one session, and there is no broadcast. This is tested with ten participants asking at the same moment.</p>
+          </details>
+          <details>
+            <summary>What gets sent to the AI model?</summary>
+            <p>One still image of the shared screen and your question. They go to a third-party vision model to be answered, and the image is not filtered first.</p>
+          </details>
+          <details>
+            <summary>Is the meeting recorded?</summary>
+            <p>Recent screen video is kept in memory so an image is ready when you ask. During development, video from the meeting stream is also saved to a file on the developer's machine. That has to change before wider use, and the privacy notes in the repository say so.</p>
+          </details>
+          <details>
+            <summary>Is there a limit on questions?</summary>
+            <p>Yes. Each question is a paid call to the model, so each person can ask once every few seconds and up to a daily limit. The panel says how long to wait instead of failing silently.</p>
+          </details>
+          <details>
+            <summary>Can I use it in my own meetings?</summary>
+            <p>Not yet. ZoomLens is in development and runs on a test Zoom account. The demo at the top of this page shows how it works, and the source is on <a href="https://github.com/richithareddyy/ZoomLens">GitHub</a>.</p>
+          </details>
+        </div>
       </div>
     </section>
 
