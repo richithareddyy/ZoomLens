@@ -575,7 +575,7 @@ function showScene(key, { instant = false } = {}) {
   clearTimeout(state.timer);
   state.pendingQ = null;
   renderScreen();
-  screenEl.setAttribute("aria-label", "Shared screen. Select a highlighted area to ask Zoom Lens about it, or drag a box across part of it.");
+  screenEl.setAttribute("aria-label", "Shared screen. Select a highlighted area to ask ZoomLens about it, or drag a box across part of it.");
   showEmpty();
   setPill("ok", "Ready");
   const v = view();
@@ -823,8 +823,8 @@ const youTile = $("#you-tile span");
 function updatePresenterStrip() {
   const n = state.asked;
   pvStrip.textContent = n
-    ? `You've asked Zoom Lens ${n} question${n === 1 ? "" : "s"} in this meeting. None of them appear on MK's screen.`
-    : "You haven't asked Zoom Lens anything yet. When you do, none of it appears on MK's screen.";
+    ? `You've asked ZoomLens ${n} question${n === 1 ? "" : "s"} in this meeting. None of them appear on MK's screen.`
+    : "You haven't asked ZoomLens anything yet. When you do, none of it appears on MK's screen.";
 }
 
 function setPresenterView(on) {
@@ -834,7 +834,7 @@ function setPresenterView(on) {
   viewBtn.textContent = on ? "Back to your view" : "See it as the presenter";
   viewNote.textContent = on
     ? "This is what MK, the presenter, sees."
-    : "This is your view, with Zoom Lens open.";
+    : "This is your view, with ZoomLens open.";
   shareTag.textContent = on ? "You are sharing your screen" : "MK is sharing their screen";
   mkTile.textContent = on ? "You" : "MK";
   youTile.textContent = on ? "SL" : "You";
