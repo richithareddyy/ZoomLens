@@ -134,7 +134,7 @@ section h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin-bottom: 16px; }
 .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
 
-.m-body { display: grid; grid-template-columns: 1fr 236px; min-height: 360px; }
+.m-body { display: grid; grid-template-columns: 1fr 244px; min-height: 360px; }
 .m-stage { padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .m-share-tag {
   align-self: flex-start; font-size: 0.72rem; color: #fff;
@@ -167,24 +167,6 @@ section h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin-bottom: 16px; }
 .tile.speaking { border-color: var(--ok); }
 .talk { position: absolute; right: 6px; bottom: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
 
-/* ZoomLens panel: light, so it reads as its own thing inside the meeting */
-.lens-panel {
-  background: #fff; color: var(--text);
-  border-left: 1px solid #2E323B;
-  display: flex; flex-direction: column;
-  min-width: 0;
-}
-.lp-head { padding: 12px 14px; border-bottom: 1px solid var(--line); }
-.lp-name { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 0.9rem; }
-.lp-state { display: block; font-size: 0.72rem; color: var(--text-2); margin-top: 3px; }
-.lp-thread { flex: 1; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
-.bubble { font-size: 0.8rem; line-height: 1.5; border-radius: 9px; padding: 8px 10px; }
-.bubble.q { align-self: flex-end; background: var(--blue-wash); color: var(--text); max-width: 92%; }
-.bubble.a { background: var(--bg-2); border: 1px solid var(--line); border-left: 2px solid var(--blue); }
-.bubble .who { display: block; font-size: 0.66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); margin-bottom: 3px; }
-.dots { display: inline-flex; gap: 4px; padding: 10px; }
-.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); animation: dot 1s ease-in-out infinite; }
-.dots i:nth-child(2) { animation-delay: .15s } .dots i:nth-child(3) { animation-delay: .3s }
 @keyframes dot { 0%,100% { opacity: .25; transform: translateY(0) } 50% { opacity: 1; transform: translateY(-2px) } }
 
 .m-controls {
@@ -202,7 +184,8 @@ button.ctl:hover { background: #2E323B; }
 
 /* Scene contents ---------------------------------------------------------- */
 .sheet { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-.sheet th, .sheet td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+.sheet th, .sheet td { padding: 6px 6px; text-align: right; border-bottom: 1px solid var(--line); }
+.sheet td:first-child { white-space: nowrap; }
 .sheet th:first-child, .sheet td:first-child { text-align: left; }
 .sheet th { color: var(--text-2); font-weight: 600; font-size: 0.7rem; }
 .sheet .hl td { background: var(--blue-wash); }
@@ -378,45 +361,65 @@ button.ctl:hover { background: #2E323B; }
 .slide-title { display: inline-block; padding: 2px 6px; margin: -2px -6px 8px; border-radius: 5px; }
 .slide-title h4 { margin: 0; }
 
-/* The ZoomLens panel ----------------------------------------------------- */
-.lp-head { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border-bottom: 1px solid var(--line); }
-.lp-id { flex: 1; min-width: 0; }
-.lp-name { font-weight: 700; font-size: 0.9rem; display: block; }
-.lp-state { display: block; font-size: 0.7rem; color: var(--text-2); margin-top: 1px; transition: color .2s; }
-.lp-state.busy { color: var(--blue-ink); }
-.lp-logo, .lp-close {
-  flex: none; display: grid; place-items: center;
-  width: 26px; height: 26px; padding: 0; border-radius: 6px;
-  background: none; border: none; color: var(--text-2); cursor: pointer;
+/* ===========================================================================
+   The Zoom Lens panel, matched to the real product (public/index.html).
+   Same tokens, same structure, same labels. Scoped so it does not touch the
+   site's own light palette.
+=========================================================================== */
+.zl {
+  --zl-bg: #101319; --zl-surface: #171b23; --zl-subtle: #1c2029;
+  --zl-border: #262c38; --zl-border-lit: #333b4a;
+  --zl-text: #e9ecf1; --zl-text-2: #aab3c0; --zl-text-3: #6f7987;
+  --zl-accent: #6ea8fe; --zl-ok: #5fc195;
+  background: var(--zl-bg); color: var(--zl-text);
+  border-left: 1px solid #2E323B;
+  display: flex; flex-direction: column; min-width: 0;
+  font-size: 13px; line-height: 1.5;
 }
-.lp-close:hover { background: var(--bg-2); color: var(--text); }
-.lp-logo:hover { background: var(--blue-wash); }
+.zl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 12px; border-bottom: 1px solid var(--zl-border); }
+.zl-id { min-width: 0; }
+.zl-title { margin: 0; font-size: 0.9rem; font-weight: 600; letter-spacing: -0.01em; cursor: default; user-select: none; }
+.zl-sub { margin: 2px 0 0; font-size: 0.7rem; color: var(--zl-text-3); }
+.zl-head-right { display: flex; align-items: center; gap: 4px; flex: none; }
+.zl-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 0.66rem; color: var(--zl-text-2); padding: 2px 7px 2px 6px; border: 1px solid var(--zl-border); border-radius: 999px; white-space: nowrap; transition: color .18s, border-color .18s; }
+.zl-pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--zl-text-3); flex: none; }
+.zl-pill[data-kind="ok"] { color: var(--zl-ok); border-color: #22402f; }
+.zl-pill[data-kind="ok"] .dot { background: var(--zl-ok); }
+.zl-pill[data-kind="busy"] .dot { background: var(--zl-accent); animation: breathe 1.5s ease-in-out infinite; }
+@keyframes breathe { 0%,100% { opacity: .3 } 50% { opacity: 1 } }
+.zl .lp-close { flex: none; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: none; border-radius: 6px; background: none; color: var(--zl-text-3); cursor: pointer; }
+.zl .lp-close:hover { background: var(--zl-subtle); color: var(--zl-text); }
 
-.lp-thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px; display: flex; flex-direction: column; gap: 9px; scroll-behavior: smooth; }
-.lp-empty { margin: auto 0; text-align: center; font-size: 0.76rem; color: var(--text-2); padding: 8px 4px; }
-.bubble { animation: appear .22s ease-out; }
+.zl-actions { display: grid; gap: 6px; padding: 10px 12px 0; }
+.zl-action { display: block; width: 100%; text-align: left; font: inherit; font-size: 0.8rem; color: var(--zl-text); background: var(--zl-surface); border: 1px solid var(--zl-border-lit); border-radius: 9px; padding: 7px 10px; cursor: pointer; transition: background .18s, border-color .18s; }
+.zl-action small { display: block; font-size: 0.68rem; color: var(--zl-text-3); margin-top: 1px; }
+.zl-action:hover { background: var(--zl-subtle); border-color: #3e475a; }
+.zl-actions.compact { grid-template-columns: 1fr 1fr; }
+.zl-actions.compact .zl-action { padding: 5px 8px; font-size: 0.72rem; }
+.zl-actions.compact .zl-action small { display: none; }
+
+.zl-thread { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+.zl-empty { margin: auto 0; text-align: center; color: var(--zl-text-3); font-size: 0.72rem; }
+.zl-turn { display: flex; flex-direction: column; gap: 4px; animation: appear .2s ease-out; }
 @keyframes appear { from { opacity: 0; transform: translateY(3px) } to { opacity: 1; transform: none } }
-.bubble .ctxline { display: block; font-size: 0.68rem; color: var(--blue-ink); margin: -1px 0 4px; }
-.bubble.fallback { border-left-color: var(--line-ui); }
-.dots { align-self: flex-start; }
+.zl-turn.question + .zl-turn { margin-top: -5px; }
+.zl-asked { align-self: flex-end; max-width: 92%; font-size: 0.74rem; color: var(--zl-text-2); background: var(--zl-subtle); border: 1px solid var(--zl-border); border-radius: 9px; padding: 5px 9px; overflow-wrap: anywhere; }
+.zl-label { font-size: 0.6rem; letter-spacing: .07em; text-transform: uppercase; color: var(--zl-text-3); }
+.zl-body { font-size: 0.76rem; color: var(--zl-text); background: var(--zl-surface); border: 1px solid var(--zl-border); border-left: 2px solid var(--zl-accent); border-radius: 9px; padding: 8px 10px; overflow-wrap: anywhere; }
+.zl-source { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--zl-border); font-size: 0.66rem; color: var(--zl-text-3); }
+.zl-thinking { display: flex; align-items: center; gap: 7px; font-size: 0.72rem; color: var(--zl-text-2); }
+.zl-thinking i { width: 22px; height: 2px; border-radius: 2px; flex: none; background: linear-gradient(90deg, var(--zl-border) 0%, var(--zl-accent) 50%, var(--zl-border) 100%); background-size: 200% 100%; animation: sweep 1.1s linear infinite; }
+@keyframes sweep { from { background-position: 100% 0 } to { background-position: -100% 0 } }
 
-.lp-suggest { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
-.chip {
-  font: 500 0.72rem var(--font); color: var(--blue-ink);
-  background: var(--blue-wash); border: 1px solid #CFE0FF;
-  padding: 5px 9px; border-radius: 999px; cursor: pointer;
-  transition: background .15s, border-color .15s;
-}
-.chip:hover { background: #E6EFFF; border-color: #A9C7FF; }
-.chip:disabled { opacity: .5; cursor: default; }
-
-.lp-form { display: flex; align-items: center; gap: 6px; margin: 0 12px 12px; padding: 4px 4px 4px 10px; border: 1px solid var(--line-ui); border-radius: 9px; transition: border-color .15s, box-shadow .15s; }
-.lp-form:focus-within { border-color: var(--blue-ink); box-shadow: 0 0 0 3px rgba(45,140,255,.15); }
-.lp-form input { flex: 1; min-width: 0; font: inherit; font-size: 0.78rem; color: var(--text); border: none; background: none; padding: 5px 0; }
-.lp-form input:focus { outline: none; }
-.lp-form input::placeholder { color: var(--text-2); }
-.lp-form button { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border: none; border-radius: 6px; background: var(--blue-ink); color: #fff; cursor: pointer; }
-.lp-form button:hover { background: #0049d6; }
+.zl-composer { margin: 0; padding: 8px 12px; border-top: 1px solid var(--zl-border); }
+.zl-field { display: flex; align-items: center; gap: 6px; background: var(--zl-surface); border: 1px solid var(--zl-border-lit); border-radius: 9px; padding: 3px 3px 3px 9px; transition: border-color .18s; }
+.zl-field:focus-within { border-color: var(--zl-accent); }
+.zl-field input { flex: 1; min-width: 0; font: inherit; font-size: 0.74rem; color: var(--zl-text); background: none; border: none; padding: 5px 0; }
+.zl-field input::placeholder { color: var(--zl-text-3); }
+.zl-field input:focus { outline: none; }
+.zl-field button { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border: none; border-radius: 6px; background: var(--zl-accent); color: var(--zl-bg); font-size: 0.8rem; cursor: pointer; }
+.zl-hint { margin: 5px 2px 0; font-size: 0.64rem; color: var(--zl-text-3); }
+.zl-diag { margin: 0; padding: 0 12px 10px; font-size: 0.66rem; color: var(--zl-text-3); }
 
 /* "Try ZoomLens" draws the eye to where to start, once, without a modal */
 .attn { animation: attn 1.6s ease-out 1; }
