@@ -1,42 +1,55 @@
 // Website demonstrations only. Nothing here connects to Zoom or calls a model.
-// Questions are matched against a fixed set of example answers written for this
-// page, and the page says so beneath the demo.
+// Every answer is written for this page and chosen by matching the question,
+// and the page says so beneath the demo, along with which parts of the demo
+// are in ZoomLens today and which are concepts.
 //
 // In answer text, [[phrase|tokens]] links a phrase to the parts of the screen
-// that carry every one of those tokens in data-spot.
+// that carry those tokens in data-spot. Tokens separated by spaces must all
+// match; groups separated by commas are alternatives.
 
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const mobileQuery = matchMedia("(max-width: 760px)");
 const isMobile = () => mobileQuery.matches;
-const THINK_MS = reduceMotion ? 0 : 650;
+const CAPTURE_MS = reduceMotion ? 0 : 320;
+const READ_MS = reduceMotion ? 0 : 580;
 const PRESENTER_MS = 9000;
-const FALLBACK =
-  "This demo understands a few example questions. Try asking what changed, what this means, or for a summary.";
+const AWAY_MS = reduceMotion ? 0 : 2600;
 const NO_WHY =
   "That isn't something the screen shows. It shows what happened, not the reason behind it.";
 const NO_MORE =
-  "That's everything this part of the screen shows. Try another row, column or chart.";
-
-// --- Scene markup -----------------------------------------------------------
+  "That's everything this part of the screen shows. Try another part, or one of the questions below.";
 
 const trig = (spot, label, cls = "") =>
   `class="spot ${cls}" data-spot="${spot}" role="button" tabindex="0" aria-label="Ask about ${label}"`;
 
-function sheetHTML() {
-  const cols = [["Segment"], ["Q1", "q1"], ["Q2", "q2"], ["Q3", "q3", true], ["Change", "change", true]];
-  const rows = [
-    ["Enterprise", "ent", ["412", "438", "491"], ["+12%", "pos"]],
-    ["Mid-market", "mid", ["286", "301", "309"], ["+3%", "pos"]],
-    ["Self-serve", "self", ["174", "169", "163"], ["−4%", "neg"]],
-    ["Expenses", "opex", ["530", "548", "570"], ["+4%", "neg"]],
-  ];
-  const head = cols.map(([name, tok, isSpot]) =>
-    isSpot ? `<th ${trig(tok, `the ${name} column`)}>${name}</th>`
-           : `<th${tok ? ` data-spot="${tok}"` : ""}>${name}</th>`).join("");
-  const body = rows.map(([label, row, vals, [chg, tone]]) => {
-    const cells = vals.map((v, i) => `<td data-spot="${row} ${cols[i + 1][1]}">${v}</td>`).join("");
-    return `<tr><td ${trig(row, `the ${label} row`)}>${label}</td>${cells}` +
-           `<td data-spot="${row} change" class="${tone}">${chg}</td></tr>`;
+const pct = (now, before) => Math.round(((now - before) / before) * 100);
+
+// --- The spreadsheet ----------------------------------------------------------
+
+const SHEET = [
+  { id: "ent", label: "Enterprise", v: [412, 438, 491], f: 540 },
+  { id: "mid", label: "Mid-market", v: [286, 301, 309], f: 318 },
+  { id: "self", label: "Self-serve", v: [174, 169, 163], f: 158 },
+  { id: "opex", label: "Expenses", v: [530, 548, 570], f: 585 },
+];
+const QUARTERS = ["q1", "q2", "q3"];
+
+function sheetHTML(withForecast) {
+  const head =
+    `<th>Segment</th><th data-spot="q1">Q1</th><th data-spot="q2">Q2</th>` +
+    `<th ${trig("q3", "the Q3 column")}>Q3</th>` +
+    (withForecast ? `<th ${trig("q4", "the Q4 forecast column", "fc")}>Q4 <small>fcst</small></th>` : "") +
+    `<th ${trig("change", "the Change column")}>Change</th>`;
+  const body = SHEET.map((r) => {
+    const cell = (col, value, cls = "") =>
+      `<td data-spot="${r.id} ${col}" data-cell="${r.id}:${col}" class="${cls}" tabindex="-1" role="button" ` +
+      `aria-label="${r.label}, ${col === "change" ? "change" : col.toUpperCase()}: ${value}">${value}</td>`;
+    const change = pct(r.v[2], r.v[1]);
+    const tone = (change > 0) !== (r.id === "opex") ? "pos" : "neg";
+    return `<tr><td ${trig(r.id, `the ${r.label} row`)}>${r.label}</td>` +
+      r.v.map((v, i) => cell(QUARTERS[i], v)).join("") +
+      (withForecast ? cell("q4", r.f, "fc") : "") +
+      cell("change", `${change > 0 ? "+" : "−"}${Math.abs(change)}%`, tone) + `</tr>`;
   }).join("");
   return `
     <h4 class="ctx">Q3 Revenue Analysis</h4>
@@ -44,241 +57,377 @@ function sheetHTML() {
     <table class="sheet"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
-// --- Scenes -----------------------------------------------------------------
+// One cell, answered from the numbers themselves.
+function cellAnswer(rowId, col) {
+  const r = SHEET.find((x) => x.id === rowId);
+  const what = r.id === "opex" ? "Expenses" : r.label;
+  let a;
+  if (col === "q1") {
+    a = `${what} in Q1: ${r.v[0]}k, the first quarter shown. It reached [[${r.v[2]}k by Q3|${r.id} q3]].`;
+  } else if (col === "q2" || col === "q3") {
+    const i = col === "q2" ? 1 : 2;
+    const diff = r.v[i] - r.v[i - 1];
+    a = `${what} in ${col.toUpperCase()}: ${r.v[i]}k, ` +
+      `${diff >= 0 ? "up" : "down"} ${Math.abs(diff)}k (${Math.abs(pct(r.v[i], r.v[i - 1]))}%) on [[${i === 1 ? "Q1" : "Q2"}|${r.id} ${QUARTERS[i - 1]}]].`;
+  } else if (col === "change") {
+    const c = pct(r.v[2], r.v[1]);
+    a = `${what} ${c >= 0 ? "rose" : "fell"} ${Math.abs(c)}% from Q2 to Q3, from [[${r.v[1]}k|${r.id} q2]] to [[${r.v[2]}k|${r.id} q3]].`;
+  } else {
+    const c = pct(r.f, r.v[2]);
+    a = `MK's Q4 forecast for ${what.toLowerCase()} is ${r.f}k, ${c >= 0 ? "up" : "down"} ${Math.abs(c)}% on [[Q3|${r.id} q3]]. It's a forecast, not a result.`;
+  }
+  const colName = col === "change" ? "change" : col === "q4" ? "Q4 forecast" : col.toUpperCase();
+  return { spot: `${r.id} ${col}`, ctx: r.id, label: `${r.label}, ${colName}`, a };
+}
+
+const sheetSpots = {
+  change: { label: "Change column", q: "What changed this quarter?",
+    a: "[[Enterprise rose the most|ent change]], up 12% on Q2. [[Mid-market grew 3%|mid change]], [[self-serve slipped 4%|self change]], and [[expenses rose 4%|opex change]].",
+    why: "Almost all of the growth came from Enterprise, which added [[53k on Q2|ent q3]]. Mid-market added 8k and self-serve lost 6k.",
+    more: "Across all three quarters, Enterprise is up 19%, from [[412|ent q1]] to [[491|ent q3]]. Mid-market is up 8% and self-serve is down 6%." },
+  ent: { label: "Enterprise row", q: "What's happening with Enterprise?",
+    a: "Enterprise is the strongest segment: [[412|ent q1]] to [[491|ent q3]] across three quarters, and [[up 12% on Q2|ent change]] alone. It is carrying most of this quarter's growth.",
+    why: "The sheet shows how much Enterprise grew, not why. It doesn't break revenue down by customer or deal, so the reason isn't on screen.",
+    more: "Enterprise went [[412|ent q1]], [[438|ent q2]], [[491|ent q3]]: up 6% and then 12%, so its growth is speeding up." },
+  mid: { label: "Mid-market row", q: "What about mid-market?",
+    a: "Mid-market grew 3% on Q2, from [[301|mid q2]] to [[309|mid q3]]. Steady, but slower than [[expenses|opex change]], which rose 4%.",
+    more: "[[286|mid q1]], [[301|mid q2]], [[309|mid q3]]: up 5% and then 3%. Still growing, but slowing." },
+  self: { label: "Self-serve row", q: "What about self-serve?",
+    a: "Self-serve is the only segment shrinking: [[174|self q1]], then [[169|self q2]], now [[163|self q3]]. That is [[down 4% on Q2|self change]].",
+    more: "Down 3% and then 4%, so the decline is getting slightly steeper. Across the three quarters it has lost about 6%." },
+  q3: { label: "Q3 column", q: "What happened in Q3?",
+    a: "Q3 is the latest quarter. Revenue across the three segments reached 963k, up from 908k in Q2, and nearly all of that came from [[Enterprise|ent q3]].",
+    more: "Revenue of 963k against [[570k of expenses|opex q3]]. Revenue grew about 6% this quarter, faster than expenses did." },
+  opex: { label: "Expenses row", q: "What about expenses?",
+    a: "Expenses rose 4% to [[570k|opex q3]]. Revenue grew about 6% overall, so costs are rising, but more slowly than revenue.",
+    why: "The sheet shows expenses rising each quarter but doesn't break them down, so it can't say what drove the increase.",
+    more: "[[530|opex q1]], [[548|opex q2]], [[570|opex q3]]: up about 3% and then 4%." },
+};
+const sheetIntents = {
+  changed: "change", q3: "q3", expenses: "opex", trend: "change", missed: "summary", point: "matters",
+  revenue: { spot: "q3", a: "Revenue is up about 6% on Q2 overall, driven by [[Enterprise at +12%|ent change]]. [[Self-serve|self change]] is the only segment that shrank." },
+  matters: { spot: "ent", a: "[[Enterprise's +12%|ent change]] is the number that matters. It accounts for most of the quarter's growth, and it is the only segment growing faster than expenses." },
+  summary: { spot: "change", a: "Revenue grew about 6% this quarter, almost entirely from [[Enterprise|ent change]]. Self-serve is shrinking and expenses are rising, though more slowly than revenue." },
+  explain: { spot: "change", a: "This table tracks revenue for three customer segments over three quarters, with expenses underneath. The [[Change column|change]] compares Q3 with Q2." },
+};
+const sheetKeywords = { "enterprise": "ent", "mid-market|mid market|midmarket|mid": "mid", "self-serve|self serve|self": "self",
+  "expense|opex|cost": "opex", "q3|third quarter": "q3", "change": "change" };
+
+// --- The paper ----------------------------------------------------------------
+
+const FIG = { sizes: ["1k", "10k", "100k", "1M"], base: [30, 46, 55, 61], rag: [34, 58, 78, 92] };
+
+function figureHTML() {
+  const pairs = FIG.sizes.map((s, i) =>
+    `<span class="pair" data-spot="fig p${i + 1}" data-pair="${i}" role="button" tabindex="-1" ` +
+    `aria-label="Figure 3 at ${s} examples: baseline ${FIG.base[i]}, retrieval-augmented ${FIG.rag[i]}">` +
+    `<span class="b" style="height:${FIG.base[i]}%"></span><span style="height:${FIG.rag[i]}%"></span>` +
+    `<em>${s}</em></span>`).join("");
+  return `<div class="paper-fig" data-spot="fig">${pairs}</div>`;
+}
+
+function pairAnswer(i) {
+  const gap = FIG.rag[i] - FIG.base[i];
+  const where = i === 0 ? "the smallest size" : i === 3 ? "the largest size" : `${FIG.sizes[i]} examples`;
+  const next = i < 3
+    ? ` The gap grows to [[${FIG.rag[3] - FIG.base[3]} points at 1M|p4]].`
+    : ` It started at [[${FIG.rag[0] - FIG.base[0]} points at 1k|p1]].`;
+  return { spot: `fig p${i + 1}`, ctx: "fig", label: `Figure 3, ${FIG.sizes[i]} examples`,
+    a: `At ${where} the baseline scores ${FIG.base[i]} and the retrieval-augmented method ${FIG.rag[i]}, a ${gap} point gap.${next}` };
+}
+
+// --- The dashboard --------------------------------------------------------------
+
+function chartPoints(values) {
+  const step = 300 / (values.length - 1);
+  return values.map((y, i) => `${Math.round(i * step)},${y}`).join(" ");
+}
+
+function dashHTML(week9) {
+  const visits = week9 ? [40, 38, 39, 37, 38, 37, 36, 36, 35] : [40, 38, 39, 37, 38, 37, 36, 36];
+  const conv = week9 ? [22, 23, 24, 30, 41, 52, 60, 67, 72] : [22, 23, 24, 30, 41, 52, 60, 67];
+  const kpi = (spot, label, name, value, delta) =>
+    `<div ${spot ? trig(spot, label) : 'class="ctx"'}><small>${name}</small><b>${value}</b>${delta ? `<i class="delta">${delta}</i>` : ""}</div>`;
+  return `
+    <h4 class="ctx">Funnel · last ${week9 ? 9 : 8} weeks</h4>
+    <div class="dash-kpis">
+      ${kpi(null, "", "Visits", week9 ? "49.0k" : "48.2k", week9 ? "+0.8k" : "")}
+      ${kpi("conv", "conversion", "Conversion", week9 ? "1.9%" : "2.1%", week9 ? "−0.2 pts" : "")}
+      ${kpi("mobile", "mobile share", "Mobile share", week9 ? "66%" : "64%", week9 ? "+2 pts" : "")}
+    </div>
+    <div ${trig("chart", "the trend chart", "block dash-chart")}>
+      <svg class="dash-svg" viewBox="0 0 300 80" preserveAspectRatio="none" aria-hidden="true">
+        <polyline stroke="#9AA4B2" points="${chartPoints(visits)}"/>
+        <polyline stroke="#2D8CFF" points="${chartPoints(conv)}"/>
+      </svg>
+      <span class="chart-zone early" data-spot="chart early"></span><span class="chart-zone late" data-spot="chart late"></span>
+      ${week9 ? '<span class="chart-zone w9" data-spot="chart w9"></span>' : ""}
+    </div>`;
+}
+
+// --- Scenes. Each is a sequence of frames: what the presenter shows over time. --
+// change: what the presenter did to reach this frame, said after "MK".
+// changed: what to highlight when catching someone up on it.
 
 const SCENES = {
-  sheet: {
-    html: sheetHTML,
-    primary: "change",
-    spots: {
-      change: { label: "Change column", q: "What changed this quarter?",
-        a: "[[Enterprise rose the most|ent change]], up 12% on Q2. [[Mid-market grew 3%|mid change]], [[self-serve slipped 4%|self change]], and [[expenses rose 4%|opex change]].",
-        why: "Almost all of the growth came from Enterprise, which added [[53k on Q2|ent q3]]. Mid-market added 8k and self-serve lost 6k.",
-        more: "Across all three quarters, Enterprise is up 19%, from [[412|ent q1]] to [[491|ent q3]]. Mid-market is up 8% and self-serve is down 6%." },
-      ent: { label: "Enterprise row", q: "What's happening with Enterprise?",
-        a: "Enterprise is the strongest segment: [[412|ent q1]] to [[491|ent q3]] across three quarters, and [[up 12% on Q2|ent change]] alone. It is carrying most of this quarter's growth.",
-        why: "The sheet shows how much Enterprise grew, not why. It doesn't break revenue down by customer or deal, so the reason isn't on screen.",
-        more: "Enterprise went [[412|ent q1]], [[438|ent q2]], [[491|ent q3]]: up 6% and then 12%, so its growth is speeding up." },
-      mid: { label: "Mid-market row", q: "What about mid-market?",
-        a: "Mid-market grew 3% on Q2, from [[301|mid q2]] to [[309|mid q3]]. Steady, but slower than [[expenses|opex change]], which rose 4%.",
-        more: "[[286|mid q1]], [[301|mid q2]], [[309|mid q3]]: up 5% and then 3%. Still growing, but slowing." },
-      self: { label: "Self-serve row", q: "What about self-serve?",
-        a: "Self-serve is the only segment shrinking: [[174|self q1]], then [[169|self q2]], now [[163|self q3]]. That is [[down 4% on Q2|self change]].",
-        more: "Down 3% and then 4%, so the decline is getting slightly steeper. Across the three quarters it has lost about 6%." },
-      q3: { label: "Q3 column", q: "What happened in Q3?",
-        a: "Q3 is the latest quarter. Revenue across the three segments reached 963k, up from 908k in Q2, and nearly all of that came from [[Enterprise|ent q3]].",
-        more: "Revenue of 963k against [[570k of expenses|opex q3]]. Revenue grew about 6% this quarter, faster than expenses did." },
-      opex: { label: "Expenses row", q: "What about expenses?",
-        a: "Expenses rose 4% to [[570k|opex q3]]. Revenue grew about 6% overall, so costs are rising, but more slowly than revenue.",
-        why: "The sheet shows expenses rising each quarter but doesn't break them down, so it can't say what drove the increase.",
-        more: "[[530|opex q1]], [[548|opex q2]], [[570|opex q3]]: up about 3% and then 4%." },
-    },
-    intents: {
-      changed: "change", q3: "q3", expenses: "opex", trend: "change", missed: "summary", point: "matters",
-      revenue: { spot: "q3", a: "Revenue is up about 6% on Q2 overall, driven by [[Enterprise at +12%|ent change]]. [[Self-serve|self change]] is the only segment that shrank." },
-      matters: { spot: "ent", a: "[[Enterprise's +12%|ent change]] is the number that matters. It accounts for most of the quarter's growth, and it is the only segment growing faster than expenses." },
-      summary: { spot: "change", a: "Revenue grew about 6% this quarter, almost entirely from [[Enterprise|ent change]]. Self-serve is shrinking and expenses are rising, though more slowly than revenue." },
-      explain: { spot: "change", a: "This table tracks revenue for three customer segments over three quarters, with expenses underneath. The [[Change column|change]] compares Q3 with Q2." },
-    },
-    keywords: { "enterprise": "ent", "mid-market|mid market|midmarket|mid": "mid", "self-serve|self serve|self": "self",
-                "expense|opex|cost": "opex", "q3|third quarter": "q3", "change": "change" },
-  },
+  sheet: { frames: [
+    { status: "Last edited 2 days ago", where: "the Q3 revenue sheet",
+      contents: "revenue for three customer segments over three quarters, with expenses underneath",
+      html: () => sheetHTML(false), primary: "change", spots: sheetSpots, intents: sheetIntents, keywords: sheetKeywords,
+      suggest: ["Which number matters most?", "What about expenses?", "Summarize this"] },
+    { status: "Edited just now", where: "the Q3 revenue sheet, now with a Q4 forecast",
+      contents: "revenue for three segments over three quarters, a Q4 forecast, and expenses",
+      change: "added a [[Q4 forecast column|q4]] to the sheet. [[Enterprise is forecast at 540k|ent q4]], and revenue overall at about 1,016k, up 6% on Q3",
+      changed: "q4", focus: "q4",
+      html: () => sheetHTML(true), primary: "q4",
+      spots: { ...sheetSpots,
+        q4: { label: "Q4 forecast column", q: "What's the Q4 forecast?",
+          a: "MK's forecast has revenue reaching about 1,016k in Q4, up 6% on Q3. [[Enterprise is forecast at 540k|ent q4]], still the main source of growth, and [[self-serve keeps shrinking, to 158k|self q4]].",
+          why: "The sheet shows the forecast numbers but not how they were made, so it can't say what they're based on.",
+          more: "[[Expenses are forecast at 585k|opex q4]], up 3%, so revenue would keep growing faster than costs." } },
+      intents: sheetIntents,
+      keywords: { ...sheetKeywords, "q4|forecast|fourth|next quarter": "q4" },
+      suggest: ["What's the Q4 forecast?", "What about expenses?", "Summarize this"] },
+  ] },
 
-  paper: {
-    html: () => `
-      <h4 class="ctx">Scaling Behaviour of Retrieval-Augmented Models</h4>
-      <p class="sub ctx">Section 4 · Results</p>
-      <div ${trig("text", "the section text", "block paper-text")}>
-        <span class="line" style="width:96%"></span><span class="line" style="width:88%"></span><span class="line" style="width:92%"></span>
-      </div>
-      <p ${trig("result", "the results sentence", "paper-result")}>The retrieval-augmented method leads by 31 points at the largest training size.</p>
-      <div ${trig("fig", "Figure 3", "paper-fig")}>
-        <span class="b" data-spot="fig small" style="height:30%"></span><span data-spot="fig small" style="height:34%"></span>
-        <span class="b" data-spot="fig" style="height:46%"></span><span data-spot="fig" style="height:58%"></span>
-        <span class="b" data-spot="fig" style="height:55%"></span><span data-spot="fig" style="height:78%"></span>
-        <span class="b" data-spot="fig large" style="height:61%"></span><span data-spot="fig large" style="height:92%"></span>
-      </div>
-      <p class="paper-cap ctx">Figure 3. Accuracy against training set size.</p>`,
-    primary: "fig",
-    spots: {
-      fig: { label: "Figure 3", q: "What does this figure show?",
-        a: "Figure 3 plots accuracy against training set size. In each pair, the lighter bar is the baseline and the darker one is the retrieval-augmented method. The gap is [[small at first|small]] and [[widest at the largest size|large]].",
-        why: "The figure shows that the gap widens, not why. The reason would be in the paper's text, which isn't readable on this part of the screen.",
-        more: "The gap grows at every step: 4 points, then 12, then 23, and [[31 at the largest size|large]]." },
-      result: { label: "Results sentence", q: "What's the main finding?",
-        a: "Retrieval helps more as data grows. At [[small sizes|small]] the two methods are close; at [[the largest size|large]] the retrieval-augmented method leads by 31 points.",
-        why: "The sentence states the size of the lead but not its cause. That would be in the discussion section, which isn't on screen.",
-        more: "At the smallest training size the two methods are [[within 4 points|small]]. The 31 point lead only appears [[at the largest size|large]]." },
-      text: { label: "Section text", q: "Summarize this section",
-        a: "This section reports how accuracy changes as the training set grows, comparing a retrieval-augmented method against a baseline. The headline is in [[the results sentence|result]].",
-        more: "It compares two methods at four training set sizes and reports accuracy for each, summarised in [[Figure 3|fig]]." },
-    },
-    intents: {
-      figure: "fig", explain: "fig", finding: "result", point: "result", summary: "text", missed: "text", changed: "result",
-      trend: { spot: "fig", a: "Both methods improve as data grows, but the retrieval-augmented one improves faster, so the gap widens from [[4 points|small]] to [[31|large]]." },
-    },
-    keywords: { "figure|chart|graph|bars": "fig", "result|finding|sentence": "result", "section|text|paragraph": "text" },
-  },
+  paper: { frames: [
+    { status: "Page 6 of 14", where: "the results section of the paper",
+      contents: "a results section comparing a retrieval-augmented method with a baseline, and Figure 3",
+      html: () => `
+        <h4 class="ctx">Scaling Behaviour of Retrieval-Augmented Models</h4>
+        <p class="sub ctx">Section 4 · Results</p>
+        <div ${trig("text", "the section text", "block paper-text")}>
+          <span class="line" style="width:96%"></span><span class="line" style="width:88%"></span><span class="line" style="width:92%"></span>
+        </div>
+        <p ${trig("result", "the results sentence", "paper-result")}>The retrieval-augmented method leads by 31 points at the largest training size.</p>
+        ${figureHTML()}
+        <p ${trig("fig", "Figure 3", "paper-cap")}>Figure 3. Accuracy against training set size. Lighter bars: baseline.</p>`,
+      primary: "fig",
+      spots: {
+        fig: { label: "Figure 3", q: "What does this figure show?",
+          a: "Figure 3 plots accuracy against training set size. In each pair, the lighter bar is the baseline and the darker one is the retrieval-augmented method. The gap is [[small at first|p1]] and [[widest at the largest size|p4]].",
+          why: "The figure shows that the gap widens, not why. The reason would be in the paper's text, which isn't readable on this part of the screen.",
+          more: "The gap grows at every step: [[4 points|p1]], then [[12|p2]], then [[23|p3]], and [[31 at the largest size|p4]]." },
+        result: { label: "Results sentence", q: "What's the main finding?",
+          a: "Retrieval helps more as data grows. At [[small sizes|p1]] the two methods are close; at [[the largest size|p4]] the retrieval-augmented method leads by 31 points.",
+          why: "The sentence states the size of the lead but not its cause. That would be in the discussion section, which isn't on screen.",
+          more: "At the smallest training size the two methods are [[within 4 points|p1]]. The 31 point lead only appears [[at the largest size|p4]]." },
+        text: { label: "Section text", q: "Summarize this section",
+          a: "This section reports how accuracy changes as the training set grows, comparing a retrieval-augmented method against a baseline. The headline is in [[the results sentence|result]].",
+          more: "It compares two methods at four training set sizes and reports accuracy for each, summarised in [[Figure 3|fig]]." },
+      },
+      intents: {
+        figure: "fig", explain: "fig", finding: "result", point: "result", summary: "text", changed: "result",
+        trend: { spot: "fig", a: "Both methods improve as data grows, but the retrieval-augmented one improves faster, so the gap widens from [[4 points|p1]] to [[31|p4]]." },
+      },
+      keywords: { "figure|chart|graph|bars": "fig", "result|finding|sentence": "result", "section|text|paragraph": "text" },
+      suggest: ["What's the main finding?", "Explain this figure", "Summarize this section"] },
+    { status: "Page 7 of 14", where: "Section 5 of the paper, Limitations",
+      contents: "the paper's limitations section: two limitations and one piece of future work",
+      change: "scrolled past the results to Section 5, Limitations. It lists [[two limitations|lim1, lim2]]: gains shrink on questions that need several documents, and only English text was tested",
+      changed: "lim1, lim2", focus: "lims",
+      html: () => `
+        <h4 class="ctx">Scaling Behaviour of Retrieval-Augmented Models</h4>
+        <p ${trig("lims", "the section heading", "sub section-head")}>Section 5 · Limitations</p>
+        <ul class="lims">
+          <li ${trig("lim1", "the first limitation")}>Gains shrink on questions that need reasoning across several documents.</li>
+          <li ${trig("lim2", "the second limitation")}>All experiments use English text only.</li>
+        </ul>
+        <p ${trig("future", "the future work", "paper-result")}>Future work: test multi-document reasoning directly.</p>`,
+      primary: "lims",
+      spots: {
+        lims: { label: "Limitations section", q: "What are the limitations?",
+          a: "Section 5 lists [[two limitations|lim1, lim2]] and [[one piece of future work|future]]. The method helps less on questions spread across several documents, and it was only tested on English.",
+          more: "The [[future work|future]] targets the first limitation directly." },
+        lim1: { label: "First limitation", q: "What's the first limitation?",
+          a: "Gains shrink on questions that need reasoning across several documents. The method helps most when the answer sits in one place.",
+          why: "The section states the limitation but not its cause." },
+        lim2: { label: "Second limitation", q: "What's the second limitation?",
+          a: "Every experiment used English text, so the results may not hold for other languages." },
+        future: { label: "Future work", q: "What's the future work?",
+          a: "The authors plan to test multi-document reasoning directly, which is [[the first limitation|lim1]]." },
+      },
+      intents: { explain: "lims", summary: "lims", point: "lims", finding: "lim1" },
+      keywords: { "limit|weakness|drawback": "lims", "future|next step|plan": "future", "english|language": "lim2", "document": "lim1" },
+      suggest: ["What's the first limitation?", "What's the future work?", "Summarize this section"] },
+  ] },
 
-  dash: {
-    html: () => `
-      <h4 class="ctx">Funnel · last 8 weeks</h4>
-      <div class="dash-kpis">
-        <div class="ctx"><small>Visits</small><b>48.2k</b></div>
-        <div ${trig("conv", "conversion")}><small>Conversion</small><b>2.1%</b></div>
-        <div ${trig("mobile", "mobile share")}><small>Mobile share</small><b>64%</b></div>
-      </div>
-      <div ${trig("chart", "the trend chart", "block dash-chart")}>
-        <svg class="dash-svg" viewBox="0 0 300 80" preserveAspectRatio="none" aria-hidden="true">
-          <polyline stroke="#9AA4B2" points="0,40 40,38 80,39 120,37 160,38 200,37 240,36 300,36"/>
-          <polyline stroke="#2D8CFF" points="0,22 40,23 80,24 120,30 160,41 200,52 240,60 300,67"/>
-        </svg>
-        <span class="chart-zone early" data-spot="chart early"></span><span class="chart-zone late" data-spot="chart late"></span>
-      </div>`,
-    primary: "conv",
-    spots: {
-      conv: { label: "Conversion", q: "Why did conversion drop?",
-        a: "Conversion has [[fallen for about five weeks|late]] while visits stayed level, so fewer visitors are buying rather than fewer arriving. With [[mobile at 64% of traffic|mobile]], the mobile experience is the first place to look.",
-        why: "The dashboard shows when conversion fell, not why. It points at mobile because mobile is most of the traffic, but it doesn't show conversion split by device.",
-        more: "Conversion [[held for three weeks|early]], then fell in [[each of the last five|late]]. Visits stayed level the whole time." },
-      mobile: { label: "Mobile share", q: "Why does mobile share matter here?",
-        a: "At 64%, most visitors are on mobile, so anything that hurts the mobile experience moves [[the overall conversion rate|conv]] more than a desktop problem would.",
-        more: "64% means roughly two in every three visitors are on a phone." },
-      chart: { label: "Trend chart", q: "Summarize the trend",
-        a: "Visits are flat to slightly up over eight weeks. Conversion [[held for the first three|early]], then [[fell steadily for the last five|late]].",
-        more: "The two lines part ways from week four: visits edge up while conversion falls every week after." },
-    },
-    intents: {
-      drop: "conv", explain: "conv", point: "conv", trend: "chart", summary: "chart", missed: "chart",
-      changed: { spot: "chart", a: "Conversion [[started falling around week four|late]] and has not recovered. Visits stayed level throughout." },
-      unusual: { spot: "chart", a: "The timing. Visits are steady, but conversion [[turns down around week four|late]] and keeps falling. A change around then, such as a release or a campaign ending, is the usual cause." },
-    },
-    keywords: { "conversion|convert": "conv", "mobile|phone": "mobile", "trend|chart|visit|traffic": "chart" },
-  },
+  dash: { frames: [
+    { status: "Updated Monday 9:00", where: "the funnel dashboard",
+      contents: "eight weeks of visits and conversion, and the share of mobile traffic",
+      html: () => dashHTML(false), primary: "conv",
+      spots: {
+        conv: { label: "Conversion", q: "Why did conversion drop?",
+          a: "Conversion has [[fallen for about five weeks|late]] while visits stayed level, so fewer visitors are buying rather than fewer arriving. With [[mobile at 64% of traffic|mobile]], the mobile experience is the first place to look.",
+          why: "The dashboard shows when conversion fell, not why. It points at mobile because mobile is most of the traffic, but it doesn't show conversion split by device.",
+          more: "Conversion [[held for three weeks|early]], then fell in [[each of the last five|late]]. Visits stayed level the whole time." },
+        mobile: { label: "Mobile share", q: "Why does mobile share matter here?",
+          a: "At 64%, most visitors are on mobile, so anything that hurts the mobile experience moves [[the overall conversion rate|conv]] more than a desktop problem would.",
+          more: "64% means roughly two in every three visitors are on a phone." },
+        chart: { label: "Trend chart", q: "Summarize the trend",
+          a: "Visits are flat to slightly up over eight weeks. Conversion [[held for the first three|early]], then [[fell steadily for the last five|late]].",
+          more: "The two lines part ways from week four: visits edge up while conversion falls every week after." },
+      },
+      intents: {
+        drop: "conv", explain: "conv", point: "conv", trend: "chart", summary: "chart",
+        changed: { spot: "chart", a: "Conversion [[started falling around week four|late]] and has not recovered. Visits stayed level throughout." },
+        unusual: { spot: "chart", a: "The timing. Visits are steady, but conversion [[turns down around week four|late]] and keeps falling. A change around then, such as a release or a campaign ending, is the usual cause." },
+      },
+      keywords: { "conversion|convert": "conv", "mobile|phone": "mobile", "trend|chart|visit|traffic": "chart" },
+      suggest: ["Why did conversion drop?", "What's unusual?", "Summarize the trend"] },
+    { status: "Updated just now", where: "the funnel dashboard, refreshed with week 9",
+      contents: "nine weeks of visits and conversion, and the share of mobile traffic",
+      change: "refreshed the dashboard with [[week 9|w9]]. [[Conversion fell again, to 1.9%|conv]], and [[mobile share rose to 66%|mobile]]",
+      changed: "conv, mobile, w9", focus: "conv",
+      html: () => dashHTML(true), primary: "conv",
+      spots: {
+        conv: { label: "Conversion", q: "Why did conversion drop?",
+          a: "Conversion is down to 1.9% after [[week 9|w9]], the sixth week of decline while visits held steady. With [[mobile now 66% of traffic|mobile]], the mobile experience is still the first place to look.",
+          why: "The dashboard shows when conversion fell, not why. Mobile is the likely place to look because it is two thirds of the traffic, but conversion isn't split by device here.",
+          more: "Conversion [[held for three weeks|early]], then fell in [[each of the last six|late]]. Week 9 alone took off another 0.2 points." },
+        mobile: { label: "Mobile share", q: "Why does mobile share matter here?",
+          a: "Mobile rose to 66% of traffic this week, so [[overall conversion|conv]] depends even more on how well the mobile experience works.",
+          more: "Two thirds of visitors are now on a phone, up from 64% last week." },
+        chart: { label: "Trend chart", q: "Summarize the trend",
+          a: "Visits edged up to 49.0k. Conversion [[held for three weeks|early]], then [[fell for six|late]], and [[week 9|w9]] is the lowest yet.",
+          more: "The gap between the two lines is now the widest it has been." },
+      },
+      intents: {
+        drop: "conv", explain: "conv", point: "conv", trend: "chart", summary: "chart",
+        unusual: { spot: "chart", a: "Visits are rising slightly while conversion keeps falling: [[week 9|w9]] is the lowest week yet. A change around week four, such as a release or a campaign ending, is the usual cause." },
+      },
+      keywords: { "conversion|convert": "conv", "mobile|phone": "mobile", "trend|chart|visit|traffic|week": "chart" },
+      suggest: ["Why did conversion drop?", "Why does mobile share matter?", "Summarize the trend"] },
+  ] },
 
-  // The presenter moves through this deck on their own.
-  slides: {
-    deck: [
-      { title: "Deployment options", primary: "title",
-        summary: "three deployment options, with managed highlighted as the recommendation",
-        html: () => `
-          <div ${trig("title", "the slide title", "slide-title")}><h4>Deployment options</h4></div>
-          <p class="sub ctx">Comparing three approaches</p>
-          <div class="slide">
-            <div ${trig("self", "the self-hosted option")}><b>Self-hosted</b>Full control, highest operating cost</div>
-            <div ${trig("managed", "the managed option", "pick")}><b>Managed</b>Lower cost, vendor runs upgrades</div>
-            <div ${trig("hybrid", "the hybrid option")}><b>Hybrid</b>Flexible, two systems to maintain</div>
-          </div>`,
-        spots: {
-          title: { label: "Slide title", q: "What's this slide about?",
-            a: "The presenter is comparing three ways to deploy and has highlighted [[managed|managed]] as the recommendation." },
-          managed: { label: "Managed option", q: "What's the main point?",
-            a: "[[Managed|managed]] is being recommended, mainly for its lower operating cost. The vendor runs upgrades, so the team gives up some control to save running costs.",
-            why: "The slide gives cost as the reason: managed has the lowest operating cost of the three." },
-          self: { label: "Self-hosted option", q: "What's the tradeoff here?",
-            a: "[[Self-hosted|self]] gives full control but costs the most to run. It is presented as the option to move away from.",
-            why: "Because of its operating cost, which is the slide's main concern." },
-          hybrid: { label: "Hybrid option", q: "Why not hybrid?",
-            a: "[[Hybrid|hybrid]] is flexible but means maintaining two systems. The slide frames that as extra work rather than a benefit." },
-        },
-        intents: { point: "managed", explain: "managed", tradeoff: "self", expenses: "managed",
-          summary: { spot: "title", a: "Three deployment options: [[self-hosted|self]], [[managed|managed]] and [[hybrid|hybrid]]. Managed is highlighted as the recommendation because it costs the least to run." } },
-        keywords: { "managed": "managed", "self-hosted|self hosted|self": "self", "hybrid": "hybrid" },
+  slides: { frames: [
+    { title: "Deployment options", primary: "title", where: "slide 1, deployment options",
+      contents: "three deployment options, with managed highlighted",
+      html: () => `
+        <div ${trig("title", "the slide title", "slide-title")}><h4>Deployment options</h4></div>
+        <p class="sub ctx">Comparing three approaches</p>
+        <div class="slide">
+          <div ${trig("self", "the self-hosted option")}><b>Self-hosted</b>Full control, highest operating cost</div>
+          <div ${trig("managed", "the managed option", "pick")}><b>Managed</b>Lower cost, vendor runs upgrades</div>
+          <div ${trig("hybrid", "the hybrid option")}><b>Hybrid</b>Flexible, two systems to maintain</div>
+        </div>`,
+      spots: {
+        title: { label: "Slide title", q: "What's this slide about?",
+          a: "MK is comparing three ways to deploy and has highlighted [[managed|managed]] as the recommendation." },
+        managed: { label: "Managed option", q: "What's the main point?",
+          a: "[[Managed|managed]] is being recommended, mainly for its lower operating cost. The vendor runs upgrades, so the team gives up some control to save running costs.",
+          why: "The slide gives cost as the reason: managed has the lowest operating cost of the three." },
+        self: { label: "Self-hosted option", q: "What's the tradeoff here?",
+          a: "[[Self-hosted|self]] gives full control but costs the most to run. It is presented as the option to move away from.",
+          why: "Because of its operating cost, which is the slide's main concern." },
+        hybrid: { label: "Hybrid option", q: "Why not hybrid?",
+          a: "[[Hybrid|hybrid]] is flexible but means maintaining two systems. The slide frames that as extra work rather than a benefit." },
       },
-      { title: "Cost comparison", primary: "title",
-        summary: "annual running costs, with managed cheapest at 28k against 35k for hybrid and 42k for self-hosted",
-        html: () => `
-          <div ${trig("title", "the slide title", "slide-title")}><h4>Cost comparison</h4></div>
-          <p class="sub ctx">Annual running cost</p>
-          <div class="cost-bars">
-            <div ${trig("cself", "self-hosted cost", "cost-row")}><span>Self-hosted</span><i style="--w:100%"></i><b>$42k</b></div>
-            <div ${trig("cman", "managed cost", "cost-row best")}><span>Managed</span><i style="--w:67%"></i><b>$28k</b></div>
-            <div ${trig("chyb", "hybrid cost", "cost-row")}><span>Hybrid</span><i style="--w:83%"></i><b>$35k</b></div>
-          </div>`,
-        spots: {
-          title: { label: "Slide title", q: "What's this slide about?",
-            a: "Annual running cost for each option: [[managed is cheapest at 28k|cman]], [[hybrid 35k|chyb]], [[self-hosted 42k|cself]]." },
-          cman: { label: "Managed cost", q: "What does managed cost?",
-            a: "28k a year, the lowest of the three, and 14k less than [[self-hosted|cself]].",
-            why: "This slide doesn't break the cost down. The previous one said the vendor runs upgrades, which is work the team no longer pays for." },
-          cself: { label: "Self-hosted cost", q: "What does self-hosted cost?",
-            a: "42k a year, the most expensive option, and half as much again as [[managed|cman]]." },
-          chyb: { label: "Hybrid cost", q: "And hybrid?",
-            a: "35k a year, between [[managed|cman]] and [[self-hosted|cself]]." },
-        },
-        intents: { point: "cman", explain: "title", expenses: "title", tradeoff: "cself",
-          summary: { spot: "title", a: "Annual costs: [[managed 28k|cman]], [[hybrid 35k|chyb]], [[self-hosted 42k|cself]]. Managed is the cheapest by a clear margin." } },
-        keywords: { "managed": "cman", "self-hosted|self hosted|self": "cself", "hybrid": "chyb" },
+      intents: { point: "managed", explain: "managed", tradeoff: "self", expenses: "managed",
+        summary: { spot: "title", a: "Three deployment options: [[self-hosted|self]], [[managed|managed]] and [[hybrid|hybrid]]. Managed is highlighted as the recommendation because it costs the least to run." } },
+      keywords: { "managed": "managed", "self-hosted|self hosted|self": "self", "hybrid": "hybrid" },
+      suggest: ["What's the main point?", "What's the tradeoff?", "Summarize this slide"] },
+    { title: "Cost comparison", primary: "title", where: "slide 2, cost comparison",
+      contents: "the annual running cost of each deployment option",
+      change: "moved to slide 2, a cost comparison: [[managed is cheapest at 28k a year|cman]]",
+      changed: "cman", focus: "cman",
+      html: () => `
+        <div ${trig("title", "the slide title", "slide-title")}><h4>Cost comparison</h4></div>
+        <p class="sub ctx">Annual running cost</p>
+        <div class="cost-bars">
+          <div ${trig("cself", "self-hosted cost", "cost-row")}><span>Self-hosted</span><i style="--w:100%"></i><b>$42k</b></div>
+          <div ${trig("cman", "managed cost", "cost-row best")}><span>Managed</span><i style="--w:67%"></i><b>$28k</b></div>
+          <div ${trig("chyb", "hybrid cost", "cost-row")}><span>Hybrid</span><i style="--w:83%"></i><b>$35k</b></div>
+        </div>`,
+      spots: {
+        title: { label: "Slide title", q: "What's this slide about?",
+          a: "Annual running cost for each option: [[managed is cheapest at 28k|cman]], [[hybrid 35k|chyb]], [[self-hosted 42k|cself]]." },
+        cman: { label: "Managed cost", q: "Which option is cheapest?",
+          a: "Managed, at 28k a year: the lowest of the three, and 14k less than [[self-hosted|cself]].",
+          why: "This slide doesn't break the cost down. The previous one said the vendor runs upgrades, which is work the team no longer pays for." },
+        cself: { label: "Self-hosted cost", q: "What does self-hosted cost?",
+          a: "42k a year, the most expensive option, and half as much again as [[managed|cman]]." },
+        chyb: { label: "Hybrid cost", q: "And hybrid?",
+          a: "35k a year, between [[managed|cman]] and [[self-hosted|cself]]." },
       },
-      { title: "Rollout timeline", primary: "title",
-        summary: "the rollout plan, a pilot in Q1, full migration in Q2 and the old servers retired in Q3",
-        html: () => `
-          <div ${trig("title", "the slide title", "slide-title")}><h4>Rollout timeline</h4></div>
-          <p class="sub ctx">If managed is approved</p>
-          <div class="timeline">
-            <div ${trig("pilot", "the pilot phase", "phase")}><b>Q1</b>Pilot with two teams</div>
-            <div ${trig("migrate", "the migration phase", "phase")}><b>Q2</b>Migrate all teams</div>
-            <div ${trig("retire", "the retirement phase", "phase")}><b>Q3</b>Retire old servers</div>
-          </div>`,
-        spots: {
-          title: { label: "Slide title", q: "What's this slide about?",
-            a: "The rollout plan: a [[pilot in Q1|pilot]], [[full migration in Q2|migrate]], and [[the old servers retired in Q3|retire]]." },
-          pilot: { label: "Pilot phase", q: "What happens in the pilot?",
-            a: "Two teams move first in Q1, to find problems before everyone else switches." },
-          migrate: { label: "Migration phase", q: "When does everyone move?",
-            a: "Every team moves in Q2, after the [[pilot|pilot]]." },
-          retire: { label: "Retirement phase", q: "When are the old servers retired?",
-            a: "In Q3, once nothing depends on them any more." },
-        },
-        intents: { point: "title", explain: "title", trend: "title", q3: "retire",
-          summary: { spot: "title", a: "Three phases: [[pilot in Q1|pilot]], [[migration in Q2|migrate]], [[retire the old servers in Q3|retire]]." } },
-        keywords: { "pilot": "pilot", "migrat|move": "migrate", "retire|old server|server": "retire" },
+      intents: { point: "cman", explain: "title", expenses: "title", tradeoff: "cself",
+        summary: { spot: "title", a: "Annual costs: [[managed 28k|cman]], [[hybrid 35k|chyb]], [[self-hosted 42k|cself]]. Managed is the cheapest by a clear margin." } },
+      keywords: { "cheap|lowest|least": "cman", "managed": "cman", "self-hosted|self hosted|self": "cself", "hybrid": "chyb" },
+      suggest: ["Which option is cheapest?", "What does self-hosted cost?", "Summarize this slide"] },
+    { title: "Rollout timeline", primary: "title", where: "slide 3, the rollout timeline",
+      contents: "a three-phase rollout plan across Q1 to Q3",
+      change: "moved to slide 3, the rollout plan: a [[pilot in Q1|pilot]], [[everyone moving in Q2|migrate]], and [[the old servers retired in Q3|retire]]",
+      changed: "pilot, migrate, retire", focus: "title",
+      html: () => `
+        <div ${trig("title", "the slide title", "slide-title")}><h4>Rollout timeline</h4></div>
+        <p class="sub ctx">If managed is approved</p>
+        <div class="timeline">
+          <div ${trig("pilot", "the pilot phase", "phase")}><b>Q1</b>Pilot with two teams</div>
+          <div ${trig("migrate", "the migration phase", "phase")}><b>Q2</b>Migrate all teams</div>
+          <div ${trig("retire", "the retirement phase", "phase")}><b>Q3</b>Retire old servers</div>
+        </div>`,
+      spots: {
+        title: { label: "Slide title", q: "What's this slide about?",
+          a: "The rollout plan: a [[pilot in Q1|pilot]], [[full migration in Q2|migrate]], and [[the old servers retired in Q3|retire]]." },
+        pilot: { label: "Pilot phase", q: "What happens in the pilot?",
+          a: "Two teams move first in Q1, to find problems before everyone else switches.",
+          why: "So problems are found with two teams rather than all of them." },
+        migrate: { label: "Migration phase", q: "When does everyone move?",
+          a: "Every team moves in Q2, after the [[pilot|pilot]]." },
+        retire: { label: "Retirement phase", q: "When are the old servers retired?",
+          a: "In Q3, once nothing depends on them any more." },
       },
-      { title: "Decision needed", primary: "title",
-        summary: "a request to approve the managed option by Friday",
-        html: () => `
-          <div ${trig("title", "the slide title", "slide-title")}><h4>Decision needed</h4></div>
-          <div class="ask-slide">
-            <p ${trig("decision", "the decision", "decision")}>Approve the managed option</p>
-            <p ${trig("due", "the deadline", "due")}>Needed by Friday · Owner: JL</p>
-          </div>`,
-        spots: {
-          title: { label: "Slide title", q: "What's this slide about?",
-            a: "The presenter is asking for a decision: [[approve the managed option|decision]], [[by Friday|due]]." },
-          decision: { label: "The decision", q: "What are they asking for?",
-            a: "Approval to go with managed, the cheapest option to run." },
-          due: { label: "Deadline", q: "When is it needed?",
-            a: "By Friday. JL owns the decision." },
-        },
-        intents: { point: "decision", explain: "decision",
-          summary: { spot: "title", a: "A request to [[approve the managed option|decision]] [[by Friday|due]]." } },
-        keywords: { "decision|approv": "decision", "friday|deadline|when|owner": "due" },
+      intents: { point: "title", explain: "title", trend: "title", q3: "retire",
+        summary: { spot: "title", a: "Three phases: [[pilot in Q1|pilot]], [[migration in Q2|migrate]], [[retire the old servers in Q3|retire]]." } },
+      keywords: { "pilot": "pilot", "migrat|move|everyone": "migrate", "retire|old server|server": "retire" },
+      suggest: ["When does everyone move?", "What happens in the pilot?", "Summarize this slide"] },
+    { title: "Decision needed", primary: "title", where: "the last slide, a decision",
+      contents: "a request for a decision, with a deadline and an owner",
+      change: "moved to the last slide, asking for a decision: [[approve the managed option|decision]] [[by Friday|due]]",
+      changed: "decision, due", focus: "decision",
+      html: () => `
+        <div ${trig("title", "the slide title", "slide-title")}><h4>Decision needed</h4></div>
+        <div class="ask-slide">
+          <p ${trig("decision", "the decision", "decision")}>Approve the managed option</p>
+          <p ${trig("due", "the deadline", "due")}>Needed by Friday · Owner: JL</p>
+        </div>`,
+      spots: {
+        title: { label: "Slide title", q: "What's this slide about?",
+          a: "MK is asking for a decision: [[approve the managed option|decision]], [[by Friday|due]]." },
+        decision: { label: "The decision", q: "What are they asking for?",
+          a: "Approval to go with managed, the cheapest option to run.",
+          why: "Earlier slides showed it costs the least, 28k a year against 35k and 42k." },
+        due: { label: "Deadline", q: "When is it needed?",
+          a: "By Friday. JL owns the decision." },
       },
-    ],
-  },
+      intents: { point: "decision", explain: "decision",
+        summary: { spot: "title", a: "A request to [[approve the managed option|decision]] [[by Friday|due]]." } },
+      keywords: { "decision|approv|asking": "decision", "friday|deadline|when|owner": "due" },
+      suggest: ["What are they asking for?", "When is it needed?", "Summarize this slide"] },
+  ] },
 };
 
 // Typed questions, most specific first. A scene with no answer for one intent
 // falls through to the next that matches.
 const INTENT_PATTERNS = [
+  ["missed", /miss|catch me up|while i was|behind|zoned out|look(ed)? away/],
   ["expenses", /expense|cost|opex|spend/],
   ["revenue", /revenue|sales|income/],
   ["changed", /chang/],
-  ["q3", /\bq3\b|quarter|third/],
+  ["q3", /\bq3\b|third quarter|this quarter/],
   ["figure", /figure|graph|chart|plot|bars?\b/],
   ["drop", /drop|fall|fell|decline|decreas|\bdown\b/],
   ["unusual", /unusual|odd|weird|anomal|stand(s)? out|surpris/],
   ["tradeoff", /trade.?off|downside|pros|cons|\bvs\b|versus|compare/],
   ["matters", /matter|most important|which number|key number|focus on/],
   ["finding", /finding|result|conclu/],
-  ["missed", /miss|catch me up|what happened|late|behind/],
   ["point", /point|takeaway|recommend|argu/],
   ["trend", /trend|over time|direction/],
   ["summary", /summar|overview|recap|tl;?dr|gist/],
   ["explain", /explain|mean|understand|what is this|what's this|what am i looking/],
 ];
 
-// --- Elements and state -----------------------------------------------------
+// --- Elements and state -------------------------------------------------------
 
 const $ = (s, r = document) => r.querySelector(s);
 const demo = $("#demo");
@@ -292,33 +441,34 @@ const pillText = $("#lp-state-text");
 const actionsEl = $("#zl-actions");
 const lensBtn = $("#ctl-lens");
 const drawBtn = $("#draw-btn");
+const awayBtn = $("#away-btn");
+const hintEl = $("#spot-hint");
+const awayStatus = $("#away-status");
 const tabs = [...document.querySelectorAll(".tab")];
 const segBtns = [...document.querySelectorAll(".seg-btn")];
 
 const state = {
-  scene: "sheet", slide: 0, lastSeen: 0, lastSpot: null,
+  scene: "sheet", frame: 0, lastSeen: 0, lastSpot: null, lastQ: "", used: new Set(),
   lensOpen: true, timer: null, pendingQ: null,
   presenterTimer: null, presenterPaused: false, demoVisible: true, cursor: null,
-  asked: 0, asPresenter: false,
+  away: false, asked: 0, asPresenter: false,
 };
 
-// The scene, or the slide on screen when the scene is a deck.
-const view = () => {
-  const s = SCENES[state.scene];
-  return s.deck ? s.deck[state.slide] : s;
-};
+const scene = () => SCENES[state.scene];
+const view = () => scene().frames[state.frame];
+const atEnd = () => state.frame >= scene().frames.length - 1;
 
-// --- Resolving what to say --------------------------------------------------
+// --- Resolving what to say ----------------------------------------------------
 
 function fromSpot(id, field = "a") {
   const s = view().spots[id];
   if (!s) return null;
-  return { spot: id, label: s.label, a: s[field] ?? (field === "why" ? NO_WHY : NO_MORE) };
+  return { spot: id, label: s.label, a: s[field] ?? (field === "why" ? NO_WHY : NO_MORE), field };
 }
 
 function fromIntent(key) {
   const v0 = view();
-  if (SCENES[state.scene].deck && (key === "missed" || key === "changed")) return catchUp();
+  if (key === "missed" || (key === "changed" && (state.frame > state.lastSeen || !v0.intents?.changed))) return catchUp();
   let v = v0.intents?.[key];
   if (typeof v === "string" && v0.intents[v] && !v0.spots[v]) v = v0.intents[v];   // alias
   if (typeof v === "string") return fromSpot(v);
@@ -336,22 +486,22 @@ function keywordSpot(text) {
 // What a follow-up builds on: the last thing answered, if it is still on screen.
 const context = () => (view().spots[state.lastSpot] ? state.lastSpot : view().primary);
 
-// The presenter kept going while you weren't asking. This says what happened.
+const plain = (t) => t.replace(/\[\[([^|\]]+)\|[^\]]+\]\]/g, "$1");
+
+// The presenter kept going. This says what changed since the last question,
+// linking only to what is still on screen.
 function catchUp() {
-  const deck = SCENES.slides.deck;
-  const now = deck[state.slide];
-  const here = `slide ${state.slide + 1}, ${now.title.toLowerCase()}: ${now.summary}`;
-  let a;
-  if (state.slide === state.lastSeen) {
-    a = `Nothing yet. The presenter is still on ${here}.`;
-  } else {
-    const missed = deck.slice(state.lastSeen + 1, state.slide)
-      .map((s, i) => `slide ${state.lastSeen + 2 + i}, ${s.title.toLowerCase()}: ${s.summary}`);
-    a = missed.length
-      ? `While you were away they covered ${missed.join("; then ")}. They're now on ${here}.`
-      : `They've moved on to ${here}.`;
+  const frames = scene().frames;
+  const now = frames[state.frame];
+  if (state.frame === state.lastSeen) {
+    return { spot: null, catchUp: true, label: "changes since your last question",
+      a: `Nothing has changed since your last question. MK is still on ${now.where}.` };
   }
-  return { spot: "title", label: `Slide ${state.slide + 1} of ${deck.length}`, a };
+  const steps = frames.slice(state.lastSeen + 1, state.frame + 1);
+  const said = steps.map((f, i) => (i === steps.length - 1 ? f.change : plain(f.change)));
+  const a = `While you were away, MK ${said[0]}.` + said.slice(1).map((c) => ` Then they ${c}.`).join("");
+  return { spot: now.changed, ctx: now.focus, catchUp: true,
+    label: "changes since your last question", a };
 }
 
 function resolveTyped(text) {
@@ -365,11 +515,11 @@ function resolveTyped(text) {
     if (spot) return fromSpot(spot);
     const thing = about[2].replace(/^the\s+/, "");
     if (thing.split(/\s+/).length <= 3) {
-      return { a: `I can't see anything about ${thing} on the shared screen right now. Ask about something that's showing.` };
+      return { offscreen: true, a: `I can't see anything about ${thing} on the shared screen right now. It shows ${view().contents}.` };
     }
   }
   // "why?", "why is enterprise up?"
-  if (/^(why|how come)\b/.test(q)) {
+  if (/^(why|how come)\b/.test(q) && !/matter/.test(q)) {
     const spot = keywordSpot(q) || (words <= 4 ? context() : null);
     if (spot) return fromSpot(spot, "why");
   }
@@ -386,12 +536,29 @@ function resolveTyped(text) {
   }
   const spot = keywordSpot(q);
   if (spot) return fromSpot(spot);
-  return { fallback: true, a: FALLBACK };
+  return { offscreen: true,
+    a: `I can't answer that from what's on screen. It shows ${view().contents}. Questions I can answer here:` };
 }
 
-// --- The screen -------------------------------------------------------------
+// Questions worth asking next, given what was just answered.
+function suggestionsFor(result) {
+  const out = [];
+  const id = result.ctx || result.spot;
+  const s = view().spots[id];
+  if (s && !result.offscreen) {
+    if (s.why && !state.used.has(`${id}:why`)) out.push("Why?");
+    if (s.more && !state.used.has(`${id}:more`)) out.push("Tell me more");
+  }
+  for (const q of view().suggest) {
+    if (q.toLowerCase() !== state.lastQ.toLowerCase()) out.push(q);
+  }
+  return [...new Set(out)].slice(0, 3);
+}
 
-const sel = (tokens) => tokens.split(/\s+/).map((t) => `[data-spot~="${t}"]`).join("");
+// --- The screen ---------------------------------------------------------------
+
+const sel = (tokens) => tokens.split(",").map((group) =>
+  group.trim().split(/\s+/).map((t) => `[data-spot~="${t}"]`).join("")).join(", ");
 
 function light(spot) {
   screenEl.querySelectorAll(".lit").forEach((el) => el.classList.remove("lit"));
@@ -401,23 +568,68 @@ function light(spot) {
 
 // Answers point back: a linked phrase shows exactly where it came from.
 let pointTimer = null;
-function pointAt(tokens, hold = 0) {
+function pointAt(tokens, { hold = 0, flash = false } = {}) {
   clearTimeout(pointTimer);
-  screenEl.querySelectorAll(".pointed").forEach((el) => el.classList.remove("pointed"));
+  screenEl.querySelectorAll(".pointed").forEach((el) => el.classList.remove("pointed", "flash"));
   screenEl.classList.toggle("pointing", Boolean(tokens));
   if (!tokens) return;
-  screenEl.querySelectorAll(sel(tokens)).forEach((el) => el.classList.add("pointed"));
+  screenEl.querySelectorAll(sel(tokens)).forEach((el) => {
+    el.classList.add("pointed");
+    if (flash && !reduceMotion) { void el.offsetWidth; el.classList.add("flash"); }
+  });
   if (hold) pointTimer = setTimeout(() => pointAt(null), hold);
 }
 
-function renderScreen() {
-  const s = SCENES[state.scene];
-  screenEl.classList.remove("focusing", "pointing", "changed");
-  screenEl.innerHTML = s.deck ? deckBar() + view().html() : s.html();   // authored here, never user input
-  if (s.deck) placeCursor();
+function markNew() {
+  const f = view();
+  if (state.frame > state.lastSeen && f.changed) {
+    screenEl.querySelectorAll(sel(f.changed)).forEach((el) => el.classList.add("is-new"));
+  }
 }
 
-// --- The thread, built as the real panel builds it --------------------------
+function renderScreen() {
+  screenEl.classList.remove("focusing", "pointing", "changed");
+  screenEl.innerHTML = statusBar() + view().html();   // authored here, never user input
+  markNew();
+  if (state.scene === "slides") placeCursor();
+  setHint(null);
+}
+
+function statusBar() {
+  const f = view();
+  const n = scene().frames.length;
+  const label = state.scene === "slides" ? `Slide ${state.frame + 1} of ${n}` : f.status;
+  const pause = state.scene === "slides" && !atEnd()
+    ? `<button type="button" class="deck-pause" aria-pressed="${state.presenterPaused}">${state.presenterPaused ? "Resume presenter" : "Pause presenter"}</button>`
+    : "";
+  return `<div class="deck-bar"><span>${label}</span>${pause}</div>`;
+}
+
+// The line under the screen names whatever is under the pointer or focus.
+const DEFAULT_HINT_FINE = "Select part of the screen, or drag a box around anything";
+const DEFAULT_HINT_TOUCH = "Tap part of the screen, or use Draw a box";
+function setHint(el) {
+  if (!el) {
+    hintEl.innerHTML = `<span class="hint-fine">${DEFAULT_HINT_FINE}</span><span class="hint-touch">${DEFAULT_HINT_TOUCH}</span>`;
+    return;
+  }
+  const label = el.getAttribute("aria-label");
+  hintEl.textContent = /^Ask/.test(label) ? label : `Ask about ${label}`;
+}
+screenEl.addEventListener("mouseover", (e) => {
+  const el = e.target.closest("[role=button][data-spot]");
+  setHint(el && screenEl.contains(el) ? el : null);
+});
+screenEl.addEventListener("mouseleave", () => setHint(document.activeElement?.closest?.("#screen [role=button]") || null));
+screenEl.addEventListener("focusin", (e) => {
+  const el = e.target.closest("[role=button][data-spot]");
+  if (el) setHint(el);
+});
+screenEl.addEventListener("focusout", (e) => {
+  if (!screenEl.contains(e.relatedTarget)) setHint(null);
+});
+
+// --- The thread, built as the real panel builds it ------------------------------
 
 function setPill(kind, text) {
   stateEl.dataset.kind = kind;
@@ -455,8 +667,10 @@ function richText(parent, text) {
   let last = 0, m;
   while ((m = re.exec(text))) {
     if (m.index > last) parent.appendChild(document.createTextNode(text.slice(last, m.index)));
-    const b = document.createElement("button");
-    b.type = "button";
+    // A span, not a button, so a long phrase wraps like the text around it.
+    const b = document.createElement("span");
+    b.setAttribute("role", "button");
+    b.tabIndex = 0;
     b.className = "zl-ref";
     b.dataset.ref = m[2];
     b.textContent = m[1];
@@ -482,6 +696,19 @@ function answerTurn(result) {
     body.appendChild(src);
   }
   t.append(label, body);
+  const next = suggestionsFor(result);
+  if (next.length) {
+    const row = document.createElement("div");
+    row.className = "zl-suggest";
+    row.setAttribute("aria-label", "Suggested questions");
+    next.forEach((q) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = q;
+      row.appendChild(b);
+    });
+    t.appendChild(row);
+  }
   return t;
 }
 
@@ -501,16 +728,21 @@ function reveal(node) {
   threadEl.scrollTop = node.offsetTop - threadEl.offsetTop - 8;
 }
 
-// question: what was typed or what a region asks. null for Describe and
+// question: what was typed, chosen or asked by a region. null for Describe and
 // Explain, which in the real panel send no visible question.
-function ask(question, result, { instant = false, thinking = "Understanding shared screen…" } = {}) {
+function ask(question, result, { instant = false, thinking } = {}) {
   clearTimeout(state.timer);
   state.pendingQ?.remove();
   state.pendingQ = null;
   threadEl.querySelector(".zl-empty")?.remove();
   threadEl.querySelector(".zl-turn.pending")?.remove();
+  threadEl.querySelectorAll(".zl-suggest").forEach((s) => s.remove());
   screenEl.querySelectorAll(".focus-box.placed").forEach((b) => b.remove());
-  if (SCENES[state.scene].deck) state.lastSeen = state.slide;
+  state.lastSeen = state.frame;
+  screenEl.querySelectorAll(".is-new").forEach((el) => el.classList.remove("is-new"));
+  clearNotice();
+  state.lastQ = question || "";
+  if (result.field && result.field !== "a") state.used.add(`${result.spot}:${result.field}`);
   state.asked += 1;
   updatePresenterStrip();
 
@@ -524,25 +756,31 @@ function ask(question, result, { instant = false, thinking = "Understanding shar
     threadEl.querySelector(".zl-turn.pending")?.remove();
     const a = answerTurn(result);
     threadEl.appendChild(a);
-    if (result.spot && !result.fallback) state.lastSpot = result.spot;
+    if (!result.offscreen && (result.ctx || result.spot)) state.lastSpot = result.ctx || result.spot;
     setPill("ok", "Ready");
     actionsEl.classList.add("compact");
     input.placeholder = "Ask a follow-up…";
     reveal(q || a);
   };
 
-  if (instant || !THINK_MS) return finish();
+  if (instant || !(CAPTURE_MS + READ_MS)) return finish();
 
-  const pending = thinkingTurn(thinking);
+  // Two honest stages, as in the product: the screen is captured, then read.
+  const reading = thinking ||
+    (result.catchUp ? "Comparing with what you last saw…" : result.label ? `Looking at: ${result.label}…` : "Reading the shared screen…");
+  const pending = thinkingTurn("Capturing the shared screen…");
   threadEl.appendChild(pending);
   reveal(q || pending);
   setPill("busy", "Understanding");
   state.pendingQ = q;
-  state.timer = setTimeout(finish, THINK_MS);
+  state.timer = setTimeout(() => {
+    pending.querySelector(".zl-thinking span").textContent = reading;
+    state.timer = setTimeout(finish, READ_MS);
+  }, CAPTURE_MS);
 }
 
-// Linked phrases point at their cells on hover or focus. On a phone the
-// screen is a separate view, so a tap switches to it and shows the cells there.
+// Linked phrases point at their source on hover or focus. A click brings the
+// screen into view, and on a phone switches to it.
 threadEl.addEventListener("mouseover", (e) => {
   const r = e.target.closest(".zl-ref");
   if (r) pointAt(r.dataset.ref);
@@ -557,29 +795,78 @@ threadEl.addEventListener("focusin", (e) => {
 threadEl.addEventListener("focusout", (e) => {
   if (e.target.closest(".zl-ref")) pointAt(null);
 });
+threadEl.addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList?.contains("zl-ref")) {
+    e.preventDefault();
+    e.target.click();
+  }
+});
 threadEl.addEventListener("click", (e) => {
   const r = e.target.closest(".zl-ref");
-  if (!r) return;
-  if (isMobile()) setPane("screen");
-  pointAt(r.dataset.ref, 3500);
+  if (r) {
+    if (isMobile()) setPane("screen");
+    const box = screenEl.getBoundingClientRect();
+    if (box.top < 64 || box.bottom > innerHeight) {
+      screenEl.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+    }
+    pointAt(r.dataset.ref, { hold: 3500, flash: true });
+    return;
+  }
+  const chip = e.target.closest(".zl-suggest button");
+  if (chip) return askTyped(chip.textContent);
+  if (e.target.closest(".zl-notice button")) return askTyped("What did I miss?");
 });
 
-// --- Scenes -----------------------------------------------------------------
+function askTyped(text) {
+  openLens();
+  ask(text, resolveTyped(text));
+}
+
+// --- The screen changed: a quiet notice, not an interruption ---------------------
+
+function clearNotice() {
+  threadEl.querySelector(".zl-notice")?.remove();
+  segBtns.find((b) => b.dataset.pane === "lens")?.classList.remove("has-news");
+}
+
+function showNotice() {
+  const n = state.frame - state.lastSeen;
+  if (n <= 0) return clearNotice();
+  let note = threadEl.querySelector(".zl-notice");
+  if (!note) {
+    note = document.createElement("div");
+    note.className = "zl-notice";
+    note.innerHTML = '<span></span><button type="button">What did I miss?</button>';
+  }
+  threadEl.querySelector(".zl-empty")?.remove();
+  note.querySelector("span").textContent =
+    n === 1 ? "The screen changed since you last asked." : `The screen changed ${n} times since you last asked.`;
+  threadEl.appendChild(note);
+  threadEl.scrollTop = threadEl.scrollHeight;
+  if (isMobile() && meeting.dataset.pane !== "lens") {
+    segBtns.find((b) => b.dataset.pane === "lens")?.classList.add("has-news");
+  }
+}
+
+// --- Scenes -------------------------------------------------------------------
 
 function showScene(key, { instant = false } = {}) {
   state.scene = key;
-  state.slide = 0;
+  state.frame = 0;
   state.lastSeen = 0;
   state.lastSpot = null;
+  state.used.clear();
   state.cursor = null;
   clearTimeout(state.timer);
   state.pendingQ = null;
   renderScreen();
-  screenEl.setAttribute("aria-label", "Shared screen. Select a highlighted area to ask ZoomLens about it, or drag a box across part of it.");
+  screenEl.setAttribute("aria-label", "Shared screen. Select part of it to ask ZoomLens about it, or drag a box across it.");
   showEmpty();
+  clearNotice();
   setPill("ok", "Ready");
   const v = view();
   ask(v.spots[v.primary].q, fromSpot(v.primary), { instant });
+  updateAwayBtn();
   startPresenter();
 }
 
@@ -607,34 +894,68 @@ tabs.forEach((tab, i) => {
 actionsEl.querySelectorAll(".zl-action").forEach((btn) => {
   btn.addEventListener("click", () => {
     const explain = btn.dataset.mode === "explain";
-    const hit = fromIntent(explain ? "explain" : "summary") || { fallback: true, a: FALLBACK };
+    const hit = fromIntent(explain ? "explain" : "summary") || fromSpot(view().primary);
     openLens();
     ask(null, hit, { thinking: explain ? "Analyzing what's being shown…" : "Understanding shared screen…" });
   });
 });
 
-// --- Regions: select one, or draw a box across part of the screen -----------
+// --- Selecting part of the screen ----------------------------------------------
 
 function activateSpot(el) {
-  const id = el.dataset.spot.split(" ").find((t) => view().spots[t]);
-  if (!id) return;
   openLens();
-  ask(view().spots[id].q, fromSpot(id));
+  if (el.dataset.cell) {
+    const [row, col] = el.dataset.cell.split(":");
+    const name = SHEET.find((x) => x.id === row).label;
+    const q = col === "change" ? `How did ${name} change?`
+      : col === "q4" ? `What's the ${name} forecast?`
+      : `What about ${name} in ${col.toUpperCase()}?`;
+    return ask(q, cellAnswer(row, col));
+  }
+  if (el.dataset.pair) {
+    return ask(`What about ${FIG.sizes[+el.dataset.pair]} examples?`, pairAnswer(+el.dataset.pair));
+  }
+  const id = el.dataset.spot.split(" ").find((t) => view().spots[t]);
+  if (id) ask(view().spots[id].q, fromSpot(id));
 }
 
 let suppressClick = false;
 screenEl.addEventListener("click", (e) => {
   if (suppressClick) return;
   if (e.target.closest(".deck-pause")) return togglePresenter();
-  const el = e.target.closest("[data-spot]");
+  const el = e.target.closest("[data-cell], [data-pair], [data-spot]");
   if (el && screenEl.contains(el)) activateSpot(el);
 });
+
+// Enter or Space asks. Arrow keys move between cells, like a spreadsheet, and
+// between the bars of a figure.
 screenEl.addEventListener("keydown", (e) => {
-  if (e.key !== "Enter" && e.key !== " ") return;
   const el = e.target.closest('[role="button"][data-spot]');
   if (!el) return;
-  e.preventDefault();
-  activateSpot(el);
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    return activateSpot(el);
+  }
+  const move = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] }[e.key];
+  if (!move) return;
+  const cell = el.closest("td, th");
+  if (cell) {
+    e.preventDefault();
+    const rows = [...screenEl.querySelectorAll(".sheet tr")];
+    let r = rows.indexOf(cell.parentElement), c = cell.cellIndex;
+    for (;;) {
+      r += move[0]; c += move[1];
+      const target = rows[r]?.cells[c];
+      if (!target) return;
+      if (target.getAttribute("role") === "button") return target.focus();
+    }
+  }
+  const pair = el.closest(".pair");
+  if (pair && move[1]) {
+    e.preventDefault();
+    const pairs = [...screenEl.querySelectorAll(".pair")];
+    pairs[pairs.indexOf(pair) + move[1]]?.focus();
+  }
 });
 
 // A mouse can drag a box at any time. A finger would scroll the page instead,
@@ -724,7 +1045,7 @@ function askAboutBox(box) {
 
   openLens();
   if (!ranked.length) {
-    ask("What's in this area?", { a: "There isn't much in that part of the screen. Try a row, a column, or a chart." });
+    ask("What's in this area?", { offscreen: true, a: "There isn't much in that part of the screen. Try a row, a column, or a chart." });
     setTimeout(() => box.remove(), 1200);
     return;
   }
@@ -732,16 +1053,7 @@ function askAboutBox(box) {
   box.classList.add("placed");
 }
 
-// --- The presenter keeps going ----------------------------------------------
-
-function deckBar() {
-  const n = SCENES.slides.deck.length;
-  const paused = state.presenterPaused;
-  return `<div class="deck-bar"><span>Slide ${state.slide + 1} of ${n}</span>` +
-    (state.slide < n - 1
-      ? `<button type="button" class="deck-pause" aria-pressed="${paused}">${paused ? "Resume presenter" : "Pause presenter"}</button>`
-      : `<span>Last slide</span>`) + `</div>`;
-}
+// --- The presenter keeps going ----------------------------------------------------
 
 // The presenter's pointer, so a change reads as someone presenting rather
 // than the page changing on its own.
@@ -771,29 +1083,30 @@ function stopPresenter() {
   state.presenterTimer = null;
 }
 
+// Slides move on by themselves, as a presenter talks through them. The other
+// screens change when you look away.
 function startPresenter() {
   stopPresenter();
-  if (state.scene !== "slides" || state.presenterPaused) return;
-  if (state.slide >= SCENES.slides.deck.length - 1) return;
-  state.presenterTimer = setTimeout(advanceSlide, PRESENTER_MS);
+  if (state.scene !== "slides" || state.presenterPaused || state.away || atEnd()) return;
+  state.presenterTimer = setTimeout(() => {
+    if (!state.demoVisible || document.hidden) return startPresenter();
+    advanceFrame();
+    startPresenter();
+  }, PRESENTER_MS);
 }
 
-function advanceSlide() {
-  // Only move on while someone can see it.
-  if (!state.demoVisible || document.hidden) {
-    state.presenterTimer = setTimeout(advanceSlide, 1500);
-    return;
-  }
-  state.slide += 1;
+function advanceFrame() {
+  if (atEnd()) return;
+  state.frame += 1;
   renderScreen();
   if (!reduceMotion) {
-    screenEl.classList.remove("changed");
     void screenEl.offsetWidth;
     screenEl.classList.add("changed");
   }
   setPill("info", "Screen changed");
   setTimeout(() => { if (stateEl.dataset.kind === "info") setPill("ok", "Ready"); }, 2600);
-  startPresenter();
+  showNotice();
+  updateAwayBtn();
 }
 
 function togglePresenter() {
@@ -811,7 +1124,44 @@ if ("IntersectionObserver" in window) {
     .observe(demo);
 }
 
-// --- See it as the presenter ------------------------------------------------
+// --- Look away: the meeting carries on without you ----------------------------------
+
+function updateAwayBtn() {
+  awayBtn.disabled = state.away;
+  awayBtn.textContent = atEnd() ? "Start the meeting over" : "Look away for 20 seconds";
+}
+
+function lookAway() {
+  if (state.away) return;
+  if (atEnd()) {
+    showScene(state.scene);
+    awayStatus.textContent = "The meeting started over.";
+    return;
+  }
+  state.away = true;
+  stopPresenter();
+  setDrawMode(false);
+  pointAt(null);
+  updateAwayBtn();
+  if (isMobile()) setPane("screen");
+  meeting.classList.add("away");
+  awayStatus.textContent = "You looked away. MK keeps presenting.";
+
+  const steps = Math.min(state.scene === "slides" ? 2 : 1, scene().frames.length - 1 - state.frame);
+  for (let i = 1; i <= steps; i++) setTimeout(advanceFrame, (AWAY_MS * i) / (steps + 1));
+  setTimeout(() => {
+    state.away = false;
+    meeting.classList.remove("away");
+    updateAwayBtn();
+    const n = state.frame - state.lastSeen;
+    awayStatus.textContent =
+      `You're back. The screen changed ${n === 1 ? "once" : `${n} times`}. Ask ZoomLens what you missed.`;
+    startPresenter();
+  }, AWAY_MS + 20);
+}
+awayBtn.addEventListener("click", lookAway);
+
+// --- See it as the presenter ------------------------------------------------------
 
 const viewBtn = $("#view-toggle");
 const viewNote = $("#view-note");
@@ -840,6 +1190,7 @@ function setPresenterView(on) {
   youTile.textContent = on ? "SL" : "You";
   screenEl.inert = on;
   $("#lens-panel").inert = on;
+  awayBtn.hidden = on;
   if (on) {
     setDrawMode(false);
     pointAt(null);
@@ -849,7 +1200,7 @@ function setPresenterView(on) {
 }
 viewBtn.addEventListener("click", () => setPresenterView(!state.asPresenter));
 
-// --- Typing a question ------------------------------------------------------
+// --- Typing a question ----------------------------------------------------------
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -868,6 +1219,7 @@ function setPane(pane) {
     const on = b.dataset.pane === pane;
     b.setAttribute("aria-selected", String(on));
     b.tabIndex = on ? 0 : -1;
+    if (on && pane === "lens") b.classList.remove("has-news");
   });
   if (isMobile()) syncLensButton(pane === "lens");
 }
