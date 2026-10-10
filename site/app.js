@@ -1221,7 +1221,6 @@ function setPane(pane) {
     b.tabIndex = on ? 0 : -1;
     if (on && pane === "lens") b.classList.remove("has-news");
   });
-  if (isMobile()) syncLensButton(pane === "lens");
 }
 
 function syncLensButton(open) {
@@ -1231,23 +1230,26 @@ function syncLensButton(open) {
 
 function setLens(open) {
   state.lensOpen = open;
-  if (isMobile()) { setPane(open ? "lens" : "screen"); return; }
   meeting.classList.toggle("lens-closed", !open);
   syncLensButton(open);
 }
+
+// On a phone the panel sits under the screen, so bring it into view when an
+// answer is on its way.
 const openLens = () => {
-  if (isMobile()) setPane("lens");
-  else if (!state.lensOpen) setLens(true);
+  if (!state.lensOpen) setLens(true);
+  if (!isMobile()) return;
+  const r = $("#lens-panel").getBoundingClientRect();
+  if (r.top < 64 || r.bottom > innerHeight) {
+    $("#lens-panel").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+  }
 };
 
 $("#lp-close").addEventListener("click", () => {
   setLens(false);
   lensBtn.focus();
 });
-lensBtn.addEventListener("click", () => {
-  const open = isMobile() ? meeting.dataset.pane !== "lens" : !state.lensOpen;
-  setLens(open);
-});
+lensBtn.addEventListener("click", () => setLens(!state.lensOpen));
 segBtns.forEach((b, i) => {
   b.addEventListener("click", () => setPane(b.dataset.pane));
   b.addEventListener("keydown", (e) => {
@@ -1262,7 +1264,7 @@ mobileQuery.addEventListener("change", () => {
   meeting.classList.remove("lens-closed");
   state.lensOpen = true;
   setPane("screen");
-  syncLensButton(!isMobile() || meeting.dataset.pane === "lens");
+  syncLensButton(true);
 });
 
 // --- Meeting controls: simulated --------------------------------------------
@@ -1286,8 +1288,9 @@ toggleControl($("#ctl-cam"), "cam-off",
 document.querySelectorAll("[data-try]").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (state.asPresenter) setPresenterView(false);
-    demo.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-    openLens();
+    if (!state.lensOpen) setLens(true);
+    (isMobile() ? $(".zl-composer") : demo)
+      .scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
     const target = $(".zl-field");
     setTimeout(() => {
       input.focus({ preventScroll: true });
@@ -1515,7 +1518,7 @@ if ("IntersectionObserver" in window && !reduceMotion) {
 // --- Start ------------------------------------------------------------------
 
 setPane("screen");
-syncLensButton(!isMobile());
+syncLensButton(true);
 tlReset();
 updatePresenterStrip();
 selectTab(0, { instant: true });
