@@ -1315,52 +1315,6 @@ $("#lp-logo").addEventListener("click", () => {
   setTimeout(() => meeting.classList.remove("focus-mode"), 2600);
 });
 
-// --- How it works: one meeting, four states ---------------------------------
-
-const howSteps = [...document.querySelectorAll(".how-step")];
-const howViz = $("#how-viz");
-
-function setStep(i) {
-  howSteps.forEach((s, j) => {
-    s.setAttribute("aria-selected", String(i === j));
-    s.tabIndex = i === j ? 0 : -1;
-  });
-  howViz.dataset.step = howSteps[i].dataset.step;
-  howViz.setAttribute("aria-labelledby", howSteps[i].id);
-}
-// Only the chosen step shows its description, and they differ in length.
-// Reserve the tallest so the page below does not move when the step changes.
-const howList = $(".how-steps");
-function reserveHowHeight() {
-  howList.style.minHeight = "";
-  const chosen = howSteps.findIndex((s) => s.getAttribute("aria-selected") === "true");
-  let tallest = 0;
-  howSteps.forEach((_, i) => {
-    setStep(i);
-    tallest = Math.max(tallest, howList.offsetHeight);
-  });
-  setStep(Math.max(0, chosen));
-  howList.style.minHeight = `${tallest}px`;
-}
-reserveHowHeight();
-let howResize = null;
-addEventListener("resize", () => {
-  clearTimeout(howResize);
-  howResize = setTimeout(reserveHowHeight, 150);
-});
-
-howSteps.forEach((s, i) => {
-  s.addEventListener("click", () => setStep(i));
-  s.addEventListener("focus", () => setStep(i));
-  s.addEventListener("keydown", (e) => {
-    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
-    if (!step) return;
-    e.preventDefault();
-    const next = (i + step + howSteps.length) % howSteps.length;
-    howSteps[next].focus();
-  });
-});
-
 // --- Architecture: trace the path to whatever is chosen -----------------
 
 const ARCH = [
@@ -1410,8 +1364,7 @@ flow.addEventListener("focusout", (e) => {
 });
 
 // --- Engineering: each problem with a small simulation of how it is solved ---
-// These run in the browser and only model the mechanism; the numbers used are
-// the real defaults (a 5 second gap and 60 questions a day).
+// These run in the browser and only model the mechanism.
 
 const engTabs = [...document.querySelectorAll(".eng-tab")];
 function selectEng(i, focus = false) {
@@ -1541,163 +1494,10 @@ function simSwitch(root, attr, onChange) {
   draw();
 })();
 
-// 4. Limits that a reload cannot reset.
-(() => {
-  const root = $('[data-sim="limits"]');
-  if (!root) return;
-  const GAP = 5, CAP = 60;
-  const askBtn = root.querySelector('[data-lim="ask"]');
-  const count = root.querySelector("[data-lim-count]");
-  const fill = root.querySelector("[data-lim-fill]");
-  const msg = root.querySelector("[data-lim-msg]");
-  let used = 0, last = -Infinity, tick = null;
-  const mode = simSwitch(root, "count", () => {
-    used = 0; last = -Infinity; draw();
-    msg.textContent = "Counter cleared. Ask a few times, then try reopening the panel.";
-  });
-  const wait = () => Math.max(0, Math.ceil(GAP - (Date.now() - last) / 1000));
-  function draw() {
-    count.textContent = `${used} / ${CAP}`;
-    fill.style.width = `${(used / CAP) * 100}%`;
-    const w = wait();
-    askBtn.textContent = w ? `Ask (wait ${w}s)` : "Ask";
-    if (!w && tick) { clearInterval(tick); tick = null; }
-  }
-  askBtn.addEventListener("click", () => {
-    const w = wait();
-    if (w) { msg.textContent = `Refused. The panel says: wait ${w} more second${w === 1 ? "" : "s"}.`; return; }
-    if (used >= CAP) { msg.textContent = "Refused. The daily limit is reached."; return; }
-    used += 1; last = Date.now();
-    msg.textContent = `Answered. The next question is allowed in ${GAP} seconds.`;
-    if (!tick) tick = setInterval(draw, 250);
-    draw();
-  });
-  root.querySelector('[data-lim="reopen"]').addEventListener("click", () => {
-    if (mode() === "connection") {
-      used = 0; last = -Infinity;
-      msg.textContent = "Reopened. A new connection, so the count and the wait started again from zero. Reopening is a way around the limit.";
-    } else {
-      msg.textContent = `Reopened. Still ${used} of ${CAP} today${wait() ? `, and still ${wait()} seconds to wait` : ""}: both are counted per participant, not per connection.`;
-    }
-    draw();
-  });
-  draw();
-})();
-
-// 5. An assistant that described itself.
-(() => {
-  const root = $('[data-sim="self"]');
-  if (!root) return;
-  const answer = root.querySelector("[data-self-a]");
-  const capture = root.querySelector(".capture");
-  const A = {
-    off: "A Zoom meeting. On the right is a panel called ZoomLens with Describe screen and Explain this buttons and an earlier answer. Behind it, a slide is being shared.",
-    on: "A slide comparing three deployment options, with the middle one highlighted as the recommendation.",
-  };
-  const draw = (v) => {
-    answer.textContent = A[v];
-    capture.dataset.about = v === "on" ? "share" : "panel";
-  };
-  simSwitch(root, "ins", draw);
-  draw("on");
-})();
-
-// --- Timing: where the wait goes ---------------------------------------------
-// Decode time is drawn from the range measured in testing. Model time is what
-// the panel's waiting state is set for (EXPECTED_SECONDS in relay.js).
-
-const TL_MODEL_S = { describe: 6, explain: 12 };
-const tlModes = [...document.querySelectorAll(".tl-mode")];
-const tlStages = Object.fromEntries([...document.querySelectorAll(".tl-stage")].map((s) => [s.dataset.stage, s]));
-const tlRunBtn = $("#tl-run");
-const tlClock = $("#tl-clock");
-const tlStatus = $("#tl-status");
-const tlDecodeSeg = $("#tl-seg-decode");
-const tlFill = $("#tl-fill");
-let tlMode = "describe";
-let tlFrame = null;
-
-function tlReset() {
-  cancelAnimationFrame(tlFrame);
-  tlFrame = null;
-  Object.values(tlStages).forEach((s) => s.classList.remove("active", "done"));
-  tlStages.decode.querySelector(".tl-t").textContent = "25 to 110 ms";
-  tlStages.model.querySelector(".tl-t").textContent = `about ${TL_MODEL_S[tlMode]} s`;
-  tlDecodeSeg.style.setProperty("--w", `${(0.07 / (TL_MODEL_S[tlMode] + 0.07)) * 100}%`);
-  tlFill.style.width = "0%";
-  tlClock.textContent = "0.00 s";
-  tlRunBtn.textContent = "Run a question";
-}
-
-tlModes.forEach((b) => {
-  b.addEventListener("click", () => {
-    tlMode = b.dataset.mode;
-    tlModes.forEach((m) => m.setAttribute("aria-checked", String(m === b)));
-    tlReset();
-    tlStatus.textContent = "";
-  });
-});
-
-function tlRun() {
-  tlReset();
-  const decodeMs = 25 + Math.round(Math.random() * 85);
-  const modelMs = TL_MODEL_S[tlMode] * 1000;
-  const total = decodeMs + modelMs;
-  const share = (decodeMs / total) * 100;
-  tlDecodeSeg.style.setProperty("--w", `${share}%`);
-  tlStages.buffer.classList.add("done");
-  tlRunBtn.textContent = "Run again";
-  tlStatus.textContent = `Running a ${tlMode === "describe" ? "Describe screen" : "Explain this"} question.`;
-
-  const finish = () => {
-    tlFrame = null;
-    ["decode", "model", "relay"].forEach((k) => {
-      tlStages[k].classList.remove("active");
-      tlStages[k].classList.add("done");
-    });
-    tlStages.decode.querySelector(".tl-t").textContent = `${decodeMs} ms this time`;
-    tlFill.style.width = "100%";
-    tlClock.textContent = `${(total / 1000).toFixed(2)} s`;
-    tlStatus.textContent =
-      `Answered in ${(total / 1000).toFixed(2)} seconds. Decoding took ${decodeMs} ms, ` +
-      `${share < 1 ? "under 1%" : `about ${Math.round(share)}%`} of the wait.`;
-  };
-  if (reduceMotion) return finish();
-
-  const t0 = performance.now();
-  const tick = (now) => {
-    const t = now - t0;
-    if (t >= total) return finish();
-    tlClock.textContent = `${(t / 1000).toFixed(2)} s`;
-    tlFill.style.width = `${(t / total) * 100}%`;
-    const inDecode = t < decodeMs;
-    tlStages.decode.classList.toggle("active", inDecode);
-    tlStages.decode.classList.toggle("done", !inDecode);
-    tlStages.model.classList.toggle("active", !inDecode);
-    tlFrame = requestAnimationFrame(tick);
-  };
-  tlFrame = requestAnimationFrame(tick);
-}
-tlRunBtn.addEventListener("click", tlRun);
-
-// --- Lens section: choosing regions --------------------------------------
-
-const callout = $("#callout p");
-const regions = [...document.querySelectorAll(".hot-region")];
-const defaultCallout = callout.textContent;
-function point(region) {
-  regions.forEach((r) => r.classList.toggle("active", r === region));
-  callout.textContent = region ? region.dataset.say : defaultCallout;
-}
-regions.forEach((r) => {
-  r.addEventListener("focus", () => point(r));
-  r.addEventListener("click", () => point(r));
-});
-
 // --- Scroll: reveal whole sections, never individual paragraphs -------------
 
 const toReveal = document.querySelectorAll(
-  ".problem-copy, .mini-meeting, .how-grid, .lens-stage, .split-meeting, .facts, .eng, .flow, .tl, .faq-list");
+  ".steps3, .priv, .flow, .eng, .faq-list");
 if ("IntersectionObserver" in window && !reduceMotion) {
   toReveal.forEach((el) => el.classList.add("rise"));
   const io = new IntersectionObserver((entries) => {
@@ -1712,6 +1512,5 @@ if ("IntersectionObserver" in window && !reduceMotion) {
 
 setPane("screen");
 syncLensButton(true);
-tlReset();
 updatePresenterStrip();
 selectTab(0, { instant: true });
