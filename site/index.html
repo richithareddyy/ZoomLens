@@ -80,26 +80,33 @@
                 </div>
               </div>
 
-              <aside class="lens-panel" id="lens-panel" aria-label="ZoomLens">
-                <div class="lp-head">
-                  <button type="button" class="lp-logo" id="lp-logo" aria-label="ZoomLens"><span class="glyph glyph-sm" aria-hidden="true"></span></button>
-                  <div class="lp-id">
-                    <span class="lp-name">ZoomLens</span>
-                    <span class="lp-state" id="lp-state">Viewing shared screen</span>
+              <aside class="lens-panel zl" id="lens-panel" aria-label="Zoom Lens">
+                <div class="zl-head">
+                  <div class="zl-id">
+                    <h3 class="zl-title" id="lp-logo">Zoom Lens</h3>
+                    <p class="zl-sub">Understand what's being shared.</p>
                   </div>
-                  <button type="button" class="lp-close" id="lp-close" aria-label="Close ZoomLens" data-tip="Close ZoomLens">
-                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                  </button>
+                  <div class="zl-head-right">
+                    <span class="zl-pill" id="lp-state" data-kind="ok" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="lp-state-text">Ready</span></span>
+                    <button type="button" class="lp-close" id="lp-close" aria-label="Close Zoom Lens" data-tip="Close Zoom Lens">
+                      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </button>
+                  </div>
                 </div>
-                <div class="lp-thread" id="thread" role="log" aria-live="polite" aria-label="Conversation"></div>
-                <div class="lp-suggest" id="suggest" role="group" aria-label="Suggested questions"></div>
-                <form class="lp-form" id="ask-form" autocomplete="off">
-                  <label for="ask" class="sr-only">Ask about the shared screen</label>
-                  <input id="ask" type="text" maxlength="140" placeholder="Ask about the shared screen…">
-                  <button type="submit" aria-label="Send question">
-                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  </button>
+                <div class="zl-actions" id="zl-actions">
+                  <button type="button" class="zl-action" data-mode="describe">Describe screen<small>Summarize what I'm looking at</small></button>
+                  <button type="button" class="zl-action" data-mode="explain">Explain this<small>Help me understand what's being shown</small></button>
+                </div>
+                <div class="zl-thread" id="thread" role="log" aria-live="polite" aria-label="Answers"></div>
+                <form class="zl-composer" id="ask-form" autocomplete="off">
+                  <div class="zl-field">
+                    <label for="ask" class="sr-only">Ask about the shared screen</label>
+                    <input id="ask" type="text" maxlength="140" placeholder="Ask about the shared screen…">
+                    <button type="submit" aria-label="Send question">↑</button>
+                  </div>
+                  <p class="zl-hint">Only you see your answers.</p>
                 </form>
+                <p class="zl-diag" aria-hidden="true">› Connection details</p>
               </aside>
             </div>
 

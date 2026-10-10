@@ -17,7 +17,7 @@ function sheetHTML() {
     ["Enterprise", "ent", "412", "438", "491", ["+12%", "pos"]],
     ["Mid-market", null, "286", "301", "309", ["+3%", "pos"]],
     ["Self-serve", null, "174", "169", "163", ["−4%", "neg"]],
-    ["Operating expenses", "opex", "530", "548", "570", ["+4%", "neg"]],
+    ["Expenses", "opex", "530", "548", "570", ["+4%", "neg"]],
   ];
   const trigger = (spot, label) =>
     `data-spot="${spot}" class="spot" role="button" tabindex="0" aria-label="Ask about ${label}"`;
@@ -51,7 +51,7 @@ const SCENES = {
         a: "Q3 is the latest quarter shown. Revenue across the three segments reached 963k, up from 908k in Q2, and nearly all of that increase came from Enterprise." },
       change: { label: "Change column", q: "What changed this quarter?",
         a: "Enterprise rose the most, up 12% on Q2. Mid-market grew 3%, self-serve slipped 4%, and operating expenses rose 4%." },
-      opex: { label: "Operating expenses row", q: "What about expenses?",
+      opex: { label: "Expenses row", q: "What about expenses?",
         a: "Operating expenses rose 4% to 570k. Revenue grew about 6% overall, so expenses are rising, but more slowly than revenue." },
     },
     intents: {
@@ -183,7 +183,6 @@ const $ = (s, r = document) => r.querySelector(s);
 const meeting = $("#meeting");
 const screenEl = $("#screen");
 const threadEl = $("#thread");
-const suggestEl = $("#suggest");
 const form = $("#ask-form");
 const input = $("#ask");
 const stateEl = $("#lp-state");
@@ -228,95 +227,113 @@ function light(spot) {
   screenEl.classList.toggle("focusing", Boolean(spot));
 }
 
-// --- The thread --------------------------------------------------------------
+// --- The thread, built exactly as the real panel builds it --------------------
 
-function bubble(kind, who, text, ctx) {
-  const b = document.createElement("div");
-  b.className = `bubble ${kind}`;
-  const w = document.createElement("span");
-  w.className = "who";
-  w.textContent = who;
-  b.appendChild(w);
-  if (ctx) {
-    const c = document.createElement("span");
-    c.className = "ctxline";
-    c.textContent = `Looking at: ${ctx}`;
-    b.appendChild(c);
+const actionsEl = $("#zl-actions");
+const pillText = $("#lp-state-text");
+
+function setPill(kind, text) {
+  stateEl.dataset.kind = kind;
+  pillText.textContent = text;
+}
+
+function turn(cls = "") {
+  const t = document.createElement("div");
+  t.className = `zl-turn ${cls}`.trim();
+  return t;
+}
+
+function askedTurn(text) {
+  const t = turn("question");
+  const a = document.createElement("div");
+  a.className = "zl-asked";
+  a.textContent = text;
+  t.appendChild(a);
+  return t;
+}
+
+function thinkingTurn(label) {
+  const t = turn("pending");
+  const row = document.createElement("div");
+  row.className = "zl-thinking";
+  row.setAttribute("role", "status");
+  row.innerHTML = "<i></i><span></span>";
+  row.querySelector("span").textContent = label;
+  t.appendChild(row);
+  return t;
+}
+
+function answerTurn(result) {
+  const t = turn();
+  const label = document.createElement("div");
+  label.className = "zl-label";
+  label.textContent = "Answer";
+  const body = document.createElement("div");
+  body.className = "zl-body";
+  body.textContent = result.a;
+  if (result.label) {
+    const src = document.createElement("div");
+    src.className = "zl-source";
+    src.textContent = `Looking at: ${result.label}`;
+    body.appendChild(src);
   }
-  b.appendChild(document.createTextNode(text));
-  return b;
+  t.append(label, body);
+  return t;
 }
 
 function showEmpty() {
   const p = document.createElement("p");
-  p.className = "lp-empty";
-  p.textContent = "Ask about the shared screen, or select part of it.";
+  p.className = "zl-empty";
+  p.textContent = "Ask about the shared screen, or use a shortcut above.";
   threadEl.replaceChildren(p);
 }
 
 function trimThread() {
-  const bubbles = threadEl.querySelectorAll(".bubble");
-  for (let i = 0; i < bubbles.length - 8; i++) bubbles[i].remove();
+  const turns = threadEl.querySelectorAll(".zl-turn");
+  for (let i = 0; i < turns.length - 10; i++) turns[i].remove();
 }
 
 function reveal(node) {
-  // Show the latest question at the top, so the answer reads from its start.
+  // The newest question at the top, so its answer reads from the start.
   threadEl.scrollTop = node.offsetTop - threadEl.offsetTop - 8;
 }
 
-// question: what the visitor asked. result: { spot, label, a } or a fallback.
-function ask(question, result, { instant = false } = {}) {
+// question: what was typed, or what a screen region asks. null for Describe
+// and Explain, which in the real panel send no visible question.
+function ask(question, result, { instant = false, thinking = "Understanding shared screen…" } = {}) {
   clearTimeout(state.timer);
   state.pendingQ?.remove();
   state.pendingQ = null;
-  threadEl.querySelector(".lp-empty")?.remove();
-  threadEl.querySelector(".dots")?.remove();
+  threadEl.querySelector(".zl-empty")?.remove();
+  threadEl.querySelector(".zl-turn.pending")?.remove();
 
-  const q = bubble("q", "You", question);
-  threadEl.appendChild(q);
+  const q = question ? askedTurn(question) : null;
+  if (q) threadEl.appendChild(q);
   light(result.spot || null);
   trimThread();
-  reveal(q);
 
   const finish = () => {
     state.pendingQ = null;
-    threadEl.querySelector(".dots")?.remove();
-    const a = bubble(result.fallback ? "a fallback" : "a", "ZoomLens", result.a, result.label);
+    threadEl.querySelector(".zl-turn.pending")?.remove();
+    const a = answerTurn(result);
     threadEl.appendChild(a);
-    stateEl.textContent = "Viewing shared screen";
-    stateEl.classList.remove("busy");
-    reveal(q);
+    setPill("ok", "Ready");
+    actionsEl.classList.add("compact");     // as the real panel does after an answer
+    input.placeholder = "Ask a follow-up…";
+    reveal(q || a);
   };
 
   if (instant || !THINK_MS) return finish();
 
-  const dots = document.createElement("div");
-  dots.className = "dots";
-  dots.setAttribute("role", "status");
-  dots.setAttribute("aria-label", "ZoomLens is reading the screen");
-  dots.innerHTML = "<i></i><i></i><i></i>";
-  threadEl.appendChild(dots);
-  stateEl.textContent = "Reading the screen…";
-  stateEl.classList.add("busy");
+  const pending = thinkingTurn(thinking);
+  threadEl.appendChild(pending);
+  reveal(q || pending);
+  setPill("busy", "Understanding");
   state.pendingQ = q;
   state.timer = setTimeout(finish, THINK_MS);
 }
 
 // --- Scenes -------------------------------------------------------------------
-
-function renderSuggestions(scene) {
-  suggestEl.replaceChildren(...scene.suggest.map(([label, key]) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "chip";
-    b.textContent = label;
-    b.addEventListener("click", () => {
-      openLens();
-      ask(label, fromIntent(scene, key) || { fallback: true, a: FALLBACK });
-    });
-    return b;
-  }));
-}
 
 function showScene(key, { instant = false } = {}) {
   const scene = SCENES[key];
@@ -324,12 +341,23 @@ function showScene(key, { instant = false } = {}) {
   clearTimeout(state.timer);
   state.pendingQ = null;
   screenEl.innerHTML = scene.html();          // authored above, never user input
-  screenEl.setAttribute("aria-label", `Shared screen. Select a highlighted area to ask ZoomLens about it.`);
-  threadEl.replaceChildren();
-  renderSuggestions(scene);
+  screenEl.setAttribute("aria-label", "Shared screen. Select a highlighted area to ask Zoom Lens about it.");
+  showEmpty();
+  setPill("ok", "Ready");
   const first = scene.spots[scene.primary];
   ask(first.q, fromSpot(scene, scene.primary), { instant });
 }
+
+// The real panel's two shortcuts, answered from this scenario's example set.
+actionsEl.querySelectorAll(".zl-action").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const scene = SCENES[state.scene];
+    const explain = btn.dataset.mode === "explain";
+    const hit = fromIntent(scene, explain ? "explain" : "summary") || { fallback: true, a: FALLBACK };
+    openLens();
+    ask(null, hit, { thinking: explain ? "Analyzing what's being shown…" : "Understanding shared screen…" });
+  });
+});
 
 function selectTab(i, opts) {
   tabs.forEach((t, j) => {
@@ -459,10 +487,9 @@ document.querySelectorAll("[data-try]").forEach((btn) => {
   btn.addEventListener("click", () => {
     $("#demo").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
     openLens();
-    const chip = suggestEl.querySelector(".chip");
-    const target = chip || input;
+    const target = $(".zl-field");
     setTimeout(() => {
-      target.focus({ preventScroll: true });
+      input.focus({ preventScroll: true });
       if (!reduceMotion) {
         target.classList.remove("attn");
         void target.offsetWidth;                   // restart the animation
