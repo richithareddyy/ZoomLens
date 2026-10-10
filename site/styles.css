@@ -499,6 +499,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* The panel slides in from zero width. Its contents keep a real width while
    hidden, so they never wrap a letter at a time and stretch the picture. */
 .hv-ph, .hv-thread, .hv-input { min-width: 150px; }
+.hv-panel { contain: size; }   /* never sets the picture's height, at any step */
 .hv-q, .hv-a { max-width: 100%; overflow-wrap: anywhere; }
 
 .how-viz[data-step="share"] .hv-screen { outline-color: var(--blue); }
@@ -586,7 +587,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
   .spot-hint { font-size: 0.74rem; }
   .ctl { padding: 6px 7px; }
   .ctl-inert:not(.ctl-share) { display: none; }
-  .hv-body { min-height: 210px; }
+  .hv-body { min-height: 232px; }
   .how-viz:not([data-step="share"]) .hv-body { grid-template-columns: 1fr 50%; }
   [data-tip]::after { display: none; }
 }
