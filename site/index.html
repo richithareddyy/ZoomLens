@@ -195,7 +195,7 @@
     <section class="private" id="private">
       <div class="wrap">
         <p class="eyebrow">Privacy</p>
-        <h2>Your answers reach only you. Some questions are still open.</h2>
+        <h2>Your answers reach only you.</h2>
         <div class="priv">
           <div>
             <h3>Protected</h3>
@@ -204,18 +204,10 @@
               <li><strong>Others never see it.</strong> Your questions and answers do not appear in the meeting, for other participants or the presenter.</li>
             </ul>
           </div>
-          <div class="open">
-            <h3>Not protected, or not settled</h3>
-            <ul>
-              <li><strong>Screen images go to a third-party AI model.</strong> Anthropic&#39;s Claude reads each image to write the answer, and the image is not filtered first.</li>
-              <li><strong>The presenter is not told.</strong> That is deliberate, and the main open question for ethical review.</li>
-              <li><strong>Identity is not independently verified.</strong> It comes from the panel. And during development, meeting video is also saved to the developer&#39;s machine.</li>
-            </ul>
-          </div>
         </div>
         <details class="more">
           <summary>How the routing is enforced</summary>
-          <p>Every connection is bound to one participant when it opens. A single function is the only way a message leaves the server, and it takes a session, not a socket, so there is no broadcast. A reply is refused unless that session made the request. Seven automated cases run against the real server, including ten participants asking at once, and the protection was deliberately broken to confirm the tests catch it.</p>
+          <p>Every connection is bound to one participant when it opens. A single function is the only way a message leaves the server, and it takes a session, not a socket, so there is no broadcast. A reply is refused unless that session made the request. Seven automated cases run against the real server, including ten participants asking at once, and the protection was deliberately broken to confirm the tests catch it. Participant identity comes from the panel and is not yet independently verified.</p>
           <p class="more-docs">Full data handling: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/docs/privacy.md">docs/privacy.md</a></p>
         </details>
       </div>

@@ -757,7 +757,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* Privacy: what is protected and what is not, side by side */
 .private { padding: 72px 0; }
 .private h2 { max-width: 22ch; }
-.priv { display: grid; grid-template-columns: 1fr 1.25fr; gap: 28px; margin-top: 24px; }
+.priv { margin-top: 24px; max-width: 760px; }
 .priv h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--blue-ink); margin-bottom: 8px; }
 .priv .open h3 { color: var(--text-2); }
 .priv ul { list-style: none; margin: 0; padding: 0; }
