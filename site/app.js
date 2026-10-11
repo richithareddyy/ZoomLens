@@ -589,10 +589,35 @@ function markNew() {
 
 function renderScreen() {
   screenEl.classList.remove("focusing", "pointing", "changed");
-  screenEl.innerHTML = statusBar() + view().html();   // authored here, never user input
+  // authored here, never user input
+  screenEl.innerHTML = `<div class="screen-inner">${statusBar()}${view().html()}</div>`;
   markNew();
+  fitScreen();
   if (state.scene === "slides") placeCursor();
   setHint(null);
+}
+
+// A shared screen fills the space it is given, as it would in Zoom: the
+// content is scaled up as far as it fits, and never below its normal size.
+function fitScreen() {
+  const inner = screenEl.querySelector(".screen-inner");
+  if (!inner) return;
+  const cs = getComputedStyle(screenEl);
+  const w = screenEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const h = screenEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  let scale = 1;
+  for (let s = Math.min(1.4, w / 360); s > 1; s -= 0.05) {
+    screenEl.style.setProperty("--s", s.toFixed(2));
+    if (inner.offsetHeight * s <= h) { scale = s; break; }
+  }
+  screenEl.style.setProperty("--s", scale.toFixed(2));
+}
+if ("ResizeObserver" in window) {
+  let fitFrame = 0;
+  new ResizeObserver(() => {
+    cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(fitScreen);
+  }).observe(screenEl);
 }
 
 function statusBar() {

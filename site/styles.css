@@ -503,7 +503,7 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
   transition: left .9s cubic-bezier(.3,.7,.2,1), top .9s cubic-bezier(.3,.7,.2,1);
 }
 .presenter-cursor span { font: 600 0.58rem var(--font); color: #fff; background: #2E7D32; padding: 1px 5px; border-radius: 4px; margin-top: 10px; }
-.screen.changed > :not(.presenter-cursor):not(.focus-box) { animation: slidein .45s ease-out; }
+.screen.changed .screen-inner > * { animation: slidein .45s ease-out; }
 @keyframes slidein { from { opacity: 0; transform: translateX(10px) } to { opacity: 1; transform: none } }
 .zl-pill[data-kind="info"] { color: var(--zl-accent); border-color: #2b4064; }
 .zl-pill[data-kind="info"] .dot { background: var(--zl-accent); animation: breathe 1s ease-in-out 3; }
@@ -926,6 +926,17 @@ body.past-hero .page-bg .hb-focus, body.past-hero .page-bg .hb-frame { opacity: 
    beside the text, so only the faint texture remains. */
 @media (max-width: 1149px) {
   .hb-focus, .hb-frame { display: none; }
+}
+
+/* Demo polish: the shared screen fills its space, the people shrink to a strip */
+.screen-inner { width: calc(100% / var(--s, 1)); transform: scale(var(--s, 1)); transform-origin: 0 0; }
+@media (min-width: 761px) {
+  .m-stage .tiles .tile { aspect-ratio: auto; height: 54px; }
+  .m-stage .tiles .tile:not(.you) span { width: 28px; height: 28px; }
+}
+@media (min-width: 1200px) {
+  .zl-body { font-size: 0.85rem; }
+  .zl-asked { font-size: 0.78rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
