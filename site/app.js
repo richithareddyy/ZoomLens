@@ -1508,6 +1508,13 @@ if ("IntersectionObserver" in window && !reduceMotion) {
   toReveal.forEach((el) => io.observe(el));
 }
 
+// --- Page background: the focus frame is only for the first screen ---------
+
+if ("IntersectionObserver" in window) {
+  new IntersectionObserver(([e]) => document.body.classList.toggle("past-hero", !e.isIntersecting), { threshold: 0.35 })
+    .observe($(".hero"));
+}
+
 // --- Start ------------------------------------------------------------------
 
 setPane("screen");

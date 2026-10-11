@@ -50,7 +50,7 @@ h1, h2, h3 { letter-spacing: -0.02em; line-height: 1.15; margin: 0; }
 section { padding: 96px 0; }
 section h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin-bottom: 16px; }
 .section-lede { max-width: 620px; color: var(--text-2); font-size: 1.08rem; margin: 0 0 40px; }
-.band { background: var(--bg-2); }
+.band { background: rgba(247,249,252,.72); }
 .note { font-size: 0.8rem; color: var(--text-2); margin: 12px 0 0; }
 .muted { color: var(--text-2); }
 
@@ -97,7 +97,7 @@ section h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin-bottom: 16px; }
 .icon-link:hover { color: var(--text); }
 
 /* Hero --------------------------------------------------------------------- */
-.hero { padding: 56px 0 72px; background: linear-gradient(180deg, var(--blue-wash), #fff 70%); }
+.hero { padding: 56px 0 72px; background: linear-gradient(180deg, rgba(244,248,255,.9), rgba(255,255,255,0) 75%); }
 .hero-grid { display: grid; grid-template-columns: 0.82fr 1.18fr; gap: 44px; align-items: start; }
 .hero-copy { padding-top: 64px; }
 .hero h1 { font-size: clamp(2.05rem, 3.4vw, 2.85rem); max-width: 15ch; }
@@ -734,13 +734,14 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* ===========================================================================
    Hero and demo: the message, then the product, with nothing between them.
 =========================================================================== */
-.hero { padding: 72px 0 36px; }
+.hero { min-height: calc(100svh - 64px); display: flex; align-items: center; padding: 48px 0 64px; }
+.hero > .wrap { width: 100%; }
 .hero .hero-grid { grid-template-columns: 1fr; }
 .hero .hero-copy { padding-top: 0; max-width: 880px; margin: 0 auto; text-align: center; }
 .hero h1 { font-size: clamp(2.2rem, 4.4vw, 3.6rem); max-width: 26ch; margin: 0 auto; text-wrap: balance; }
 .hero .body { max-width: 560px; margin: 16px auto 26px; font-size: clamp(1.05rem, 1.3vw, 1.2rem); }
 .hero .cta { justify-content: center; }
-.demo-section { padding: 0 0 72px; }
+.demo-section { padding: 72px 0; }
 .demo-section .hero-demo { max-width: 1080px; margin: 0 auto; }
 
 /* How it works: three steps in one row */
@@ -781,8 +782,8 @@ details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
 .faq .faq-list { margin-top: 8px; }
 
 @media (max-width: 760px) {
-  .hero { padding: 40px 0 28px; }
-  .demo-section { padding-bottom: 48px; }
+  .hero { padding: 32px 0 48px; }
+  .demo-section { padding: 48px 0; }
   .how-row { grid-template-columns: 1fr; gap: 12px; }
   .steps3 { grid-template-columns: 1fr; gap: 14px; }
   .priv { grid-template-columns: 1fr; gap: 8px; }
@@ -891,6 +892,40 @@ details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
 .demo-labels span:last-child::before {
   width: 15px; height: 15px; border-radius: 0; vertical-align: -3px;
   background: url(mark.svg) center / contain no-repeat;
+}
+
+/* Behind the headline: a barely-there shared screen, and one area that
+   ZoomLens has in focus. Texture, not content; nothing in it is readable. */
+.hero { position: relative; overflow: hidden; }
+.hero > .wrap { position: relative; z-index: 1; }
+/* One fixed layer behind the whole page; content sits above it. */
+.page-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+main, .foot { position: relative; z-index: 1; }
+.page-bg .hb-focus, .page-bg .hb-frame { transition: opacity .5s ease; }
+/* The focus frame belongs to the first screen and fades once you scroll on. */
+body.past-hero .page-bg .hb-focus, body.past-hero .page-bg .hb-frame { opacity: 0; }
+.hb-layer { position: absolute; inset: 0; }
+.hb-art { display: block; width: 100%; height: 100%; }
+.hb-art .s { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.hb-art .s.thick { stroke-width: 2; }
+.hb-art .f { fill: currentColor; }
+.hb-art .soft { opacity: .5; }
+.hb-base { color: #1F2329; opacity: .04; }
+.hb-focus { color: var(--blue-ink); opacity: .13; }
+.hb-corner { fill: none; stroke: rgba(11,92,255,.3); stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+
+/* The shared content changes slowly underneath; the focus frame stays put. */
+.hb-scene { opacity: 0; animation: hb-cycle 28s ease-in-out infinite; }
+.hb-scene.s1 { opacity: 1; animation-delay: -2s; }
+.hb-scene.s2 { animation-delay: 5s; }
+.hb-scene.s3 { animation-delay: 12s; }
+.hb-scene.s4 { animation-delay: 19s; }
+@keyframes hb-cycle { 0% { opacity: 0 } 5% { opacity: 1 } 25% { opacity: 1 } 30% { opacity: 0 } 100% { opacity: 0 } }
+
+/* Below this width the drawing is cropped too tightly for the frame to sit
+   beside the text, so only the faint texture remains. */
+@media (max-width: 1149px) {
+  .hb-focus, .hb-frame { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
