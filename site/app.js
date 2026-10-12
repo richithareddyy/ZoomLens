@@ -1,7 +1,5 @@
-// Website demonstrations only. Nothing here connects to Zoom or calls a model.
-// Every answer is written for this page and chosen by matching the question,
-// and the page says so beneath the demo, along with which parts of the demo
-// are in ZoomLens today and which are concepts.
+// The site's demo. Nothing here connects to Zoom or calls a model: answers are
+// written for this page and picked by matching the question, as the page says.
 //
 // In answer text, [[phrase|tokens]] links a phrase to the parts of the screen
 // that carry those tokens in data-spot. Tokens separated by spaces must all
@@ -445,7 +443,6 @@ const awayBtn = $("#away-btn");
 const hintEl = $("#spot-hint");
 const awayStatus = $("#away-status");
 const tabs = [...document.querySelectorAll(".tab")];
-const segBtns = [...document.querySelectorAll(".seg-btn")];
 
 const state = {
   scene: "sheet", frame: 0, lastSeen: 0, lastSpot: null, lastQ: "", used: new Set(),
@@ -790,7 +787,7 @@ function ask(question, result, { instant = false, thinking } = {}) {
 
   if (instant || !(CAPTURE_MS + READ_MS)) return finish();
 
-  // Two honest stages, as in the product: the screen is captured, then read.
+  // Two stages, as in the product: the screen is captured, then read.
   const reading = thinking ||
     (result.catchUp ? "Comparing with what you last saw…" : result.label ? `Looking at: ${result.label}…` : "Reading the shared screen…");
   const pending = thinkingTurn("Capturing the shared screen…");
@@ -829,7 +826,6 @@ threadEl.addEventListener("keydown", (e) => {
 threadEl.addEventListener("click", (e) => {
   const r = e.target.closest(".zl-ref");
   if (r) {
-    if (isMobile()) setPane("screen");
     const box = screenEl.getBoundingClientRect();
     if (box.top < 64 || box.bottom > innerHeight) {
       screenEl.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
@@ -851,7 +847,6 @@ function askTyped(text) {
 
 function clearNotice() {
   threadEl.querySelector(".zl-notice")?.remove();
-  segBtns.find((b) => b.dataset.pane === "lens")?.classList.remove("has-news");
 }
 
 function showNotice() {
@@ -868,9 +863,6 @@ function showNotice() {
     n === 1 ? "The screen changed since you last asked." : `The screen changed ${n} times since you last asked.`;
   threadEl.appendChild(note);
   threadEl.scrollTop = threadEl.scrollHeight;
-  if (isMobile() && meeting.dataset.pane !== "lens") {
-    segBtns.find((b) => b.dataset.pane === "lens")?.classList.add("has-news");
-  }
 }
 
 // --- Scenes -------------------------------------------------------------------
@@ -992,7 +984,6 @@ function setDrawMode(on) {
 drawBtn.addEventListener("click", () => {
   const on = drawBtn.getAttribute("aria-pressed") !== "true";
   setDrawMode(on);
-  if (on && isMobile()) setPane("screen");
 });
 
 let drag = null;
@@ -1168,7 +1159,6 @@ function lookAway() {
   setDrawMode(false);
   pointAt(null);
   updateAwayBtn();
-  if (isMobile()) setPane("screen");
   meeting.classList.add("away");
   awayStatus.textContent = "You looked away. MK keeps presenting.";
 
@@ -1219,7 +1209,6 @@ function setPresenterView(on) {
   if (on) {
     setDrawMode(false);
     pointAt(null);
-    if (isMobile()) setPane("screen");
   }
   updatePresenterStrip();
 }
@@ -1236,17 +1225,7 @@ form.addEventListener("submit", (e) => {
   input.focus();
 });
 
-// --- ZoomLens open and closed, and the phone views ---------------------------
-
-function setPane(pane) {
-  meeting.dataset.pane = pane;
-  segBtns.forEach((b) => {
-    const on = b.dataset.pane === pane;
-    b.setAttribute("aria-selected", String(on));
-    b.tabIndex = on ? 0 : -1;
-    if (on && pane === "lens") b.classList.remove("has-news");
-  });
-}
+// --- ZoomLens open and closed ------------------------------------------------
 
 function syncLensButton(open) {
   lensBtn.setAttribute("aria-pressed", String(open));
@@ -1275,20 +1254,9 @@ $("#lp-close").addEventListener("click", () => {
   lensBtn.focus();
 });
 lensBtn.addEventListener("click", () => setLens(!state.lensOpen));
-segBtns.forEach((b, i) => {
-  b.addEventListener("click", () => setPane(b.dataset.pane));
-  b.addEventListener("keydown", (e) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    e.preventDefault();
-    const other = segBtns[1 - i];
-    setPane(other.dataset.pane);
-    other.focus();
-  });
-});
 mobileQuery.addEventListener("change", () => {
   meeting.classList.remove("lens-closed");
   state.lensOpen = true;
-  setPane("screen");
   syncLensButton(true);
 });
 
@@ -1308,7 +1276,7 @@ toggleControl($("#ctl-mic"), "mic-off",
 toggleControl($("#ctl-cam"), "cam-off",
   "Stop video (simulated)", "Start video (simulated)", "Stop video (simulated)", "Start video (simulated)");
 
-// --- Try ZoomLens: point at where to begin, no modal ------------------------
+// --- "Try the demo": scroll to the question box and focus it --------------
 
 document.querySelectorAll("[data-try]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -1388,8 +1356,7 @@ flow.addEventListener("focusout", (e) => {
   if (!flow.contains(e.relatedTarget)) trace(null);
 });
 
-// --- Engineering: each problem with a small simulation of how it is solved ---
-// These run in the browser and only model the mechanism.
+// --- Engineering tabs and their simulations (they model the mechanism only) --
 
 const engTabs = [...document.querySelectorAll(".eng-tab")];
 function selectEng(i, focus = false) {
@@ -1542,7 +1509,6 @@ if ("IntersectionObserver" in window) {
 
 // --- Start ------------------------------------------------------------------
 
-setPane("screen");
 syncLensButton(true);
 updatePresenterStrip();
 selectTab(0, { instant: true });
