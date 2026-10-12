@@ -1,9 +1,5 @@
-// Turns a clip of screen share video into a single still image.
-//
-// The clip comes from framebuffer.js and is always self-contained: parameter
-// sets, a keyframe, then the changes since. ffmpeg decodes it and we keep the
-// last frame, which is the screen as it is now rather than as it was when the
-// keyframe was sent.
+// Decodes a clip from framebuffer.js to a JPEG of its last frame, i.e. the
+// screen as it is now rather than at the keyframe.
 
 import { spawn } from "child_process";
 import fs from "fs/promises";
@@ -11,24 +7,16 @@ import path from "path";
 import os from "os";
 import ffmpegPath from "ffmpeg-static";
 
-// Decoding a few seconds of video should take well under a second. If it takes
-// longer than this something is wrong and the participant should be told rather
-// than left waiting.
+// Decoding normally takes well under a second; past this something is wrong.
 const TIMEOUT_MS = 10000;
 
-/**
- * @param {Buffer} clip  H.264 from framebuffer.snapshot()
- * @returns {Promise<{ jpeg: Buffer, ms: number }>}
- */
 export async function decodeToJpeg(clip) {
   if (!clip?.length) throw new Error("No video to decode yet.");
 
   const started = Date.now();
 
-  // ffmpeg writes to a file rather than a pipe. With -update it overwrites the
-  // same file for every frame it decodes, so when it finishes the file holds the
-  // last one. Getting that through a pipe means dealing with several JPEGs stuck
-  // together, which is not worth the saved write.
+  // With -update, ffmpeg overwrites one file per decoded frame, leaving the last
+  // frame when it finishes. A pipe would give several JPEGs concatenated.
   const out = path.join(os.tmpdir(), `zoomlens-${process.pid}-${Date.now()}.jpg`);
 
   try {
@@ -54,8 +42,7 @@ export async function decodeToJpeg(clip) {
 
       ff.stderr.on("data", (d) => { stderr += d.toString(); });
 
-      // A broken pipe here just means ffmpeg had what it needed and stopped
-      // reading, which is not a failure.
+      // EPIPE just means ffmpeg stopped reading early.
       ff.stdin.on("error", () => {});
 
       ff.on("error", (err) => {

@@ -23,7 +23,7 @@ if (!fs.existsSync(".tokens.json")) {
 
 const tokens = JSON.parse(fs.readFileSync(".tokens.json", "utf8"));
 
-// Warn if the token is probably stale (they last ~1 hour)
+// Access tokens last about an hour.
 const ageMinutes = (Date.now() - new Date(tokens.obtained_at)) / 60000;
 if (ageMinutes > 55) {
   console.warn(`WARNING: token is ${Math.round(ageMinutes)} minutes old and has likely expired.`);
@@ -32,7 +32,7 @@ if (ageMinutes > 55) {
 
 const url = `https://api.zoom.us/v2/live_meetings/${meetingId}/rtms_app/status`;
 
-// Zoom requires settings.client_id, which identifies which app's RTMS to start
+// settings.client_id says which app's RTMS to start.
 const payload = {
   action,
   settings: { client_id: process.env.ZM_RTMS_CLIENT },
@@ -57,7 +57,7 @@ if (text) console.log(text);
 
 if (res.status === 204 || res.ok) {
   console.log(`\nRTMS ${action} request accepted.`);
-  console.log("   Watch the server log for: >>> WEBHOOK RECEIVED: meeting.rtms_started");
+  console.log("   Watch the server log for: Webhook: meeting.rtms_started");
 } else {
   console.log("\nRequest failed. What the common codes mean:");
   console.log("   401  -> access token expired; re-run zoom-auth.js");

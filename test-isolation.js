@@ -1,15 +1,9 @@
-// Verifies that one participant's traffic never reaches another.
-//
-// This is the evidence behind the central claim in docs/privacy.md. It runs the
-// real relay from relay.js, not a copy of it, on a throwaway HTTP server. The
-// only thing stubbed is whether a screen share is active, which is stubbed to
-// true so that requests are accepted rather than refused. Isolation has to hold
-// on the path where answers actually flow, not only on the path where they are
-// turned down.
+// Checks that one participant's traffic never reaches another, the claim
+// docs/privacy.md rests on. Runs the real relay on a throwaway server with
+// screen sharing stubbed active, so isolation is tested on the path where
+// answers are accepted, not just refused. Exits non-zero on any failure.
 //
 //   node test-isolation.js
-//
-// Exits non-zero if any case fails, so it can be run before a demo.
 
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -17,7 +11,7 @@ import WebSocket from "ws";
 import { createRelay } from "./relay.js";
 
 const PORT = 8099;
-const QUIET = () => {}; // the relay logs a lot; the test speaks for itself
+const QUIET = () => {};
 
 // --- Harness ---------------------------------------------------------------
 

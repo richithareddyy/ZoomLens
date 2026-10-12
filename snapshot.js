@@ -5,8 +5,6 @@
 //   node snapshot.js <file.h264>      # a specific capture
 //   node snapshot.js <file.h264> all  # every keyframe, as a numbered series
 //
-// The output JPEG is what you feed to a vision model.
-
 import fs from "fs";
 import path from "path";
 import { execFileSync } from "child_process";
@@ -15,7 +13,6 @@ import ffmpegPath from "ffmpeg-static";
 const CAPTURE_DIR = "captures";
 const OUT_DIR = "snapshots";
 
-// Pick the file: either the one given, or the most recent capture
 let input = process.argv[2];
 const mode = process.argv[3] === "all" ? "all" : "latest";
 
@@ -49,9 +46,7 @@ console.log(`Input:  ${input} (${sizeKB} KB)`);
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 
-// -update 1 makes each decoded frame overwrite the same output file, so when
-// ffmpeg finishes the file holds the LAST frame, i.e. the most recent state
-// of the shared screen.
+// -update 1 overwrites one file per frame, so it ends up holding the last frame.
 const args =
   mode === "all"
     ? ["-y", "-f", "h264", "-i", input,

@@ -18,7 +18,6 @@ if (!code) {
   process.exit(1);
 }
 
-// Zoom wants the client id + secret as HTTP Basic auth
 const basic = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
 
 const body = new URLSearchParams({

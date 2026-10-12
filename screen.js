@@ -1,23 +1,8 @@
-// Reads the shared screen from this machine's own display.
-//
-// This is not how Zoom Lens is meant to work. The real path is the meeting's
-// media stream, which gives the backend the shared content directly and works
-// no matter whose machine the backend runs on. This exists because that stream
-// needs a capability enabled on the Zoom account, and until it is there would
-// otherwise be nothing current to look at.
-//
-// It works for the case the product is actually for. When somebody else shares
-// their screen, Zoom draws that share on this display, so a picture of this
-// display is a picture of what they are sharing.
-//
-// The limits are worth being clear about:
-//
-//   it only sees what this machine can see, so the backend has to run on the
-//   machine of the person asking
-//   it captures the whole display, including the Zoom window and this panel
-//   macOS requires screen recording permission, granted once, by hand
-//
-// Every answer produced from it says where the image came from.
+// Captures this machine's display as a stand-in for the meeting's media stream,
+// which needs a capability not yet enabled on the Zoom account. It works because
+// Zoom draws whoever is sharing on this display, but it only sees this machine,
+// it includes the Zoom window and the panel, and macOS needs screen-recording
+// permission granted by hand.
 
 import { spawn } from "child_process";
 import fs from "fs/promises";
@@ -27,8 +12,7 @@ import ffmpegPath from "ffmpeg-static";
 
 const TIMEOUT_MS = 8000;
 
-// A retina display is far larger than the model needs, and a smaller image is
-// quicker to send and cheaper to read. Wide enough that small text survives.
+// Retina captures are far larger than the model needs; 1600 keeps small text legible.
 const MAX_WIDTH = 1600;
 
 function run(command, args, timeoutMs) {
@@ -64,10 +48,6 @@ function run(command, args, timeoutMs) {
   });
 }
 
-/**
- * Captures this machine's display as a JPEG.
- * @returns {Promise<{ jpeg: Buffer, ms: number }>}
- */
 export async function captureLocalScreen() {
   if (process.platform !== "darwin") {
     throw new Error("Reading this machine's display is only implemented for macOS.");
@@ -79,7 +59,7 @@ export async function captureLocalScreen() {
   const out = path.join(os.tmpdir(), `zoomlens-screen-${stamp}.jpg`);
 
   try {
-    // -x stays silent, so a demo is not punctuated by the camera shutter sound
+    // -x: no shutter sound
     await run("/usr/sbin/screencapture", ["-x", raw], TIMEOUT_MS);
 
     const { size } = await fs.stat(raw);

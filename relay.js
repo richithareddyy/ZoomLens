@@ -1,47 +1,26 @@
-// The connection layer between the panel and the backend.
+// WebSocket relay between the panel and the backend (see docs/protocol.md).
 //
-// Implements docs/protocol.md.
+// This is where answers are kept private. It has to be enforced here rather
+// than in the panel, which whoever runs it can change. Three rules:
 //
-// The privacy model lives here. Zoom Lens promises that a participant's answers
-// reach that participant and nobody else, and that promise has to be kept on the
-// backend, because anything enforced in the panel can be changed by whoever is
-// running the panel.
-//
-// Three rules make it structural rather than a matter of care:
-//
-//   1. One connection is one session, bound to one participant when it opens.
-//   2. sendTo() is the only way a message leaves this file. It takes a session
-//      id, not a socket, so every outbound message names its single recipient.
-//   3. A reply to a request can only go to the session that made that request.
-//      reply() checks the request is pending on that session and refuses
-//      otherwise, so a mix-up cannot silently deliver to the wrong person.
-//
-// There is no broadcast anywhere. Where several sessions need the same news, it
-// is sent to each one individually through sendTo.
+//   1. One connection is one session, bound to one participant on hello.
+//   2. sendTo() is the only way a message leaves this file, and it takes a
+//      session id, not a socket. There is no broadcast.
+//   3. reply() only delivers if the request is pending on that same session.
 
 import { WebSocketServer } from "ws";
 
-// How long a request is expected to take, so the panel can say something more
-// useful than "working".
+// Shown by the panel while it waits.
 const EXPECTED_SECONDS = { describe: 6, explain: 12, followup: 3, ask: 7 };
 
-// A participant may have the panel open more than once, on two devices or in
-// two windows. Those are separate sessions and are never merged, but they do
-// belong to the same person, so we keep an index to find them.
+// One participant can have several sessions (two windows, two devices). They're
+// never merged, but rate limits are counted per participant.
 const participantKey = (meetingUUID, participantUUID) =>
   `${meetingUUID}|${participantUUID}`;
 
-// Every request costs real money and several seconds, so there are two limits.
-//
-// A gap between requests, because pressing a button twice is almost always
-// impatience rather than a second question, and the first answer is usually
-// still on its way.
-//
-// A daily ceiling per participant, because the gap alone does not bound what a
-// single enthusiastic person can spend over an afternoon.
-//
-// Both are counted per participant rather than per session, otherwise opening
-// the panel a second time would reset them.
+// Each request costs money and several seconds. The cooldown catches impatient
+// double presses; the daily cap bounds total spend. Both are per participant so
+// reopening the panel doesn't reset them.
 const COOLDOWN_MS = Number(process.env.ZOOM_LENS_COOLDOWN_SECONDS ?? 5) * 1000;
 const DAILY_LIMIT = Number(process.env.ZOOM_LENS_DAILY_LIMIT ?? 60);
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -54,13 +33,12 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
   const usage = new Map(); // "meeting|participant" -> { last, count, since }
   let nextSessionId = 1;
 
-  // Decides whether a participant may ask right now. Returns null to allow, or
-  // a sentence explaining the refusal, which the panel shows as it is.
+  // Null to allow, otherwise the refusal text the panel shows.
   function refuseForRate(key, now = Date.now()) {
     const seen = usage.get(key);
     if (!seen) return null;
 
-    if (now - seen.since >= DAY_MS) return null; // a new day, start again
+    if (now - seen.since >= DAY_MS) return null;
 
     const wait = COOLDOWN_MS - (now - seen.last);
     if (wait > 0) {
@@ -75,8 +53,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
     return null;
   }
 
-  // Recorded only once a request is actually accepted, so a refusal never
-  // counts against the person who was refused.
+  // Only called for accepted requests, so refusals don't count.
   function recordUse(key, now = Date.now()) {
     const seen = usage.get(key);
     if (!seen || now - seen.since >= DAY_MS) {
@@ -89,8 +66,6 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
 
   // --- The only way out of this file ---------------------------------------
 
-  // Sends one message to one session. Everything outbound goes through here,
-  // so there is a single place where delivery is decided and logged.
   function sendTo(sessionId, message) {
     const session = sessions.get(sessionId);
     if (!session) {
@@ -105,9 +80,8 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
     return true;
   }
 
-  // Sends a reply that belongs to a specific request. Refuses unless that
-  // request is actually outstanding on that session, which is what makes it
-  // impossible to deliver one participant's answer to another.
+  // Refuses unless the request is outstanding on this session, so one
+  // participant's answer can't be delivered to another.
   function reply(sessionId, requestId, message) {
     const session = sessions.get(sessionId);
     if (!session) {
@@ -186,8 +160,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
         return;
       }
 
-      // hello must come first, so a session can never exist without an identity
-      // decision having been made about it.
+      // hello must come first, so no session exists without an identity decision.
       if (msg.type !== "hello" && !session.greeted) {
         fail(session.id, "no_hello", "Send hello before anything else.");
         ws.close();
@@ -238,7 +211,6 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
             fail(session.id, "bad_request", `Unknown mode: ${mode}`, id);
             return;
           }
-          // followup is scoped to a previous answer; ask stands on its own.
           if ((mode === "followup" || mode === "ask") && !question) {
             fail(session.id, "bad_request", `A ${mode} needs a question.`, id);
             return;
@@ -252,8 +224,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
             return;
           }
 
-          // Checked last, so a request refused for any other reason is not also
-          // counted as an attempt.
+          // Checked last, so requests refused for other reasons aren't counted.
           const refusal = refuseForRate(session.key);
           if (refusal) {
             log(`RELAY ${session.id} rate limited: ${refusal}`);
@@ -262,7 +233,6 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
           }
           recordUse(session.key);
 
-          // Record it before replying, so reply() has something to match
           session.pending.set(id, { mode, at: Date.now() });
 
           log(
@@ -270,8 +240,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
             `requested ${mode}${question ? `: "${question}"` : ""}`
           );
 
-          // Acknowledge through sendTo rather than reply, because reply clears
-          // the pending request and the answer still has to come back against it.
+          // sendTo, not reply: reply would clear the pending request the answer needs.
           sendTo(session.id, {
             type: "accepted",
             id,
@@ -279,11 +248,8 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
             expectedSeconds: EXPECTED_SECONDS[mode],
           });
 
-          if (!answerRequest) return; // nothing wired up to produce answers
+          if (!answerRequest) return; // tests run the relay without one
 
-          // Produced asynchronously so a slow answer never blocks other
-          // participants. It returns through reply(), which is what keeps it
-          // addressed to this session and no other.
           answerRequest({
             meetingUUID: session.meetingUUID,
             mode,
@@ -307,8 +273,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
           return;
 
         default:
-          // Ignored on purpose, so a newer panel talking to an older backend
-          // degrades rather than breaking.
+          // Ignored so a newer panel degrades gracefully against an older backend.
           log(`RELAY ${session.id} sent an unknown type: ${msg.type}`);
       }
     });
@@ -329,8 +294,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
   });
 
   return {
-    // Called when a meeting's screen share starts or stops. Sent to each session
-    // in that meeting individually, by id. There is no broadcast.
+    // Sent to each session in the meeting individually; there is no broadcast.
     notifyStreamState(meetingUUID, active) {
       let told = 0;
       for (const session of sessions.values()) {
@@ -348,7 +312,6 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
       }
     },
 
-    // For tests and diagnostics.
     stats: () => ({
       sessions: sessions.size,
       participants: byParticipant.size,

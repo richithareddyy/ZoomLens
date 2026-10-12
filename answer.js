@@ -1,17 +1,11 @@
-// Turns an image of a shared screen into an answer for one participant.
-//
-// The prompts here are the product. The difference between Describe and Explain
-// is not in the code, it is in what each one asks for.
-//
-// describe.js does the same thing from the command line against a saved file.
-// This is the version the panel calls, so it takes an image in memory and
-// returns text rather than printing it.
+// Turns an image of the shared screen into an answer. Describe and Explain
+// differ only in their prompts. describe.js reuses these from the command line.
 
 import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL = process.env.VISION_MODEL;
 
-const PROMPTS = {
+export const PROMPTS = {
   describe: `You are helping someone who is watching a screen share in a Zoom meeting and wants to know what is currently on screen.
 
 Describe what you see in plain language. Lead with the single most important thing, then fill in supporting detail. Name what the content actually is (a spreadsheet, a slide, a code editor, a chart) and report concrete specifics (real numbers, real labels, real headings) rather than vague summary.
@@ -37,13 +31,11 @@ You are given your previous answer about this screen and a follow-up question. A
 If the answer genuinely is not visible on screen, say so plainly instead of guessing. Under 120 words. No preamble.`,
 };
 
-// Describe should feel immediate. Explain is worth more thinking.
-const EFFORT = { describe: "low", explain: "high", followup: "low", ask: "low" };
+// Describe should feel immediate; Explain is worth more thinking.
+export const EFFORT = { describe: "low", explain: "high", followup: "low", ask: "low" };
 
-// When the image comes from this machine's display rather than the meeting's
-// media stream, it contains the whole screen: the Zoom window, the participant
-// tiles, and Zoom Lens itself. None of that is the shared content, and an answer
-// that describes its own panel back to the person reading it is absurd.
+// A display capture includes the Zoom window, tiles and this panel. Early answers
+// described the panel back to the user, so the model is told to ignore it.
 const IGNORE_OWN_INTERFACE = `
 
 The image may be a photograph of an entire computer display rather than the shared content alone. If so, it will contain the Zoom meeting window, participant video tiles and name labels, browser tabs and bookmarks, the dock, the menu bar, and a panel titled "Zoom Lens" showing Describe, Explain and Follow-up controls.
@@ -52,14 +44,7 @@ None of that is the shared content. Ignore all of it, and never mention the Zoom
 
 const client = new Anthropic();
 
-/**
- * @param {object}  opts
- * @param {Buffer}  opts.jpeg      the screen, decoded
- * @param {string}  opts.mode      describe | explain | followup
- * @param {string?} opts.question  the participant's question, followup only
- * @param {string?} opts.previous  the previous answer, so a followup has scope
- * @returns {Promise<{ text: string, ms: number, usage: object }>}
- */
+// previous is the last answer on this session; followup needs it for scope.
 export async function produceAnswer({ jpeg, mode, question, previous }) {
   if (!MODEL) throw new Error("VISION_MODEL is not set in .env");
   if (!PROMPTS[mode]) throw new Error(`Unknown mode: ${mode}`);
@@ -111,8 +96,7 @@ export async function produceAnswer({ jpeg, mode, question, previous }) {
   return { text, ms: Date.now() - started, usage: response.usage };
 }
 
-// Turns an SDK failure into something a participant can act on, rather than a
-// stack trace in a panel.
+// SDK errors in words a participant can act on.
 export function explainFailure(error) {
   if (error instanceof Anthropic.AuthenticationError) {
     return "The AI service rejected our credentials. Check ANTHROPIC_API_KEY.";

@@ -1,14 +1,6 @@
-// Zoom Lens panel.
-//
-// Two jobs. Ask Zoom which meeting this is and who is looking at it, and hold a
-// connection to the backend that carries that identity, so an answer can be
-// addressed to one participant and nobody else.
-//
-// The protocol is documented in docs/protocol.md.
-//
-// Meetings run for an hour and networks are unreliable, so the connection is
-// expected to drop. It reconnects on its own, backing off so a backend that is
-// down does not get hammered.
+// The in-meeting panel. Gets the meeting and participant from the Zoom Apps SDK
+// and holds a WebSocket to the backend carrying that identity, so answers can be
+// addressed to this participant alone (docs/protocol.md). Reconnects with backoff.
 
 const el = (id) => document.getElementById(id);
 
@@ -43,8 +35,7 @@ const shorten = (v) => (!v ? "unknown" : v.length > 24 ? `${v.slice(0, 21)}…` 
 
 // --- Presentation -----------------------------------------------------------
 
-// One human-readable line in the header. Internal identifiers and SDK wording
-// never reach it; those live in diagnostics.
+// The header shows one plain status; identifiers and SDK errors go to diagnostics.
 function paint() {
   const open = socket?.readyState === WebSocket.OPEN;
   let kind = "busy", text = "Connecting";
@@ -106,21 +97,13 @@ function diag(field, value) {
 
 // --- The thread -------------------------------------------------------------
 
-// Two different things are wanted at two different moments.
-//
-// While a question is going out, the newest thing should be in view, so the
-// thread follows the bottom.
-//
-// When an answer lands, the useful place is the TOP of that answer. Scrolling
-// to the bottom of a long one drops the reader at the last line of text they
-// have not read yet, which is what the panel used to do.
+// While asking, follow the bottom. When an answer lands, show its top: scrolling
+// to the bottom of a long answer leaves the reader at its last line.
 function scrollDown() {
   ui.thread.scrollTop = ui.thread.scrollHeight;
 }
 
 function revealTop(node) {
-  // Allow for the gap the thread puts above its children, so the first line is
-  // not jammed against the edge.
   const pad = parseFloat(getComputedStyle(ui.thread).paddingTop) || 0;
   ui.thread.scrollTo({
     top: Math.max(0, node.offsetTop - ui.thread.offsetTop - pad),
@@ -131,8 +114,7 @@ function revealTop(node) {
 function addAsked(text) {
   ui.empty?.remove();
   const turn = document.createElement("div");
-  turn.className = "turn";
-  turn.classList.add("question");
+  turn.className = "turn question";
   const asked = document.createElement("div");
   asked.className = "asked";
   asked.textContent = text;
@@ -152,8 +134,7 @@ function addThinking(label) {
   scrollDown();
 }
 
-// Replaces whatever is currently thinking, so an answer lands where the
-// spinner was rather than below it.
+// The answer replaces the thinking row rather than appearing below it.
 function settle(label, text, source, failed = false) {
   const turn = thinkingEl ?? document.createElement("div");
   thinkingEl = null;
@@ -220,7 +201,7 @@ async function getIdentity() {
     return null;
   }
 
-  // Called separately so a failure names the one that failed.
+  // Called one at a time so a failure names which call failed.
   const results = {};
   for (const name of ["getMeetingUUID", "getUserContext"]) {
     try { results[name] = await zoomSdk[name](); }
@@ -275,8 +256,7 @@ function connect() {
       screenName: identity?.screenName ?? null,
     }));
 
-    // Meetings idle for long stretches and intermediaries drop quiet
-    // connections, so say something periodically.
+    // Proxies drop idle connections during quiet stretches of a meeting.
     stopKeepalive();
     keepalive = setInterval(() => {
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" }));
@@ -311,10 +291,7 @@ function connect() {
         settle("Couldn't answer", msg.message, null, true);
         break;
 
-      case "pong":
-        return;
-
-      default:
+      default: // pong, or anything unknown
         return;
     }
     paint();
@@ -336,7 +313,7 @@ function connect() {
   });
 
   socket.addEventListener("error", () => {
-    // close fires straight after, which is where the retry is handled
+    // close follows, and handles the retry
     diag("dLink", "connection error");
   });
 }
@@ -360,15 +337,12 @@ ui.composer.addEventListener("submit", (e) => {
   const question = ui.q.value.trim();
   if (!question || ui.q.disabled) return;
   ui.q.value = "";
-  // followup is scoped to the previous answer; ask stands on its own.
   send(hasAnswer ? "followup" : "ask", question);
   ui.q.focus();
 });
 
 ui.q.addEventListener("input", paint);
 
-// Close tidily so the backend frees the session rather than waiting for a
-// timeout.
 window.addEventListener("beforeunload", () => {
   closing = true;
   stopKeepalive();
@@ -379,8 +353,8 @@ window.addEventListener("beforeunload", () => {
 
 (async () => {
   identity = await getIdentity();
-  // Connect either way. An unidentified session is refused at the point of
-  // asking, which is a clearer failure than never connecting.
+  // Connect even without an identity: being refused when asking is a clearer
+  // failure than never connecting.
   connect();
   paint();
 })();

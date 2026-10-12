@@ -1,15 +1,10 @@
-// Gets a new access token without going through the browser again.
-//
-// Access tokens last an hour, which is shorter than a working session, so
-// re-authorising by hand several times a day is the normal experience without
-// this. The refresh token saved alongside it lasts far longer and can be
-// exchanged for a fresh access token directly.
+// Swaps the saved refresh token for a new access token (they last an hour),
+// without going back through the browser.
 //
 //   node --env-file=.env refresh-token.js
 //
-// Zoom issues a new refresh token every time and invalidates the old one, so
-// the file is rewritten with both. Losing the new one means going back to the
-// browser, which is why this writes before it prints anything.
+// Zoom rotates the refresh token on every use, so the file is written before
+// anything is printed; losing the new one means re-authorising in the browser.
 
 import fs from "fs";
 

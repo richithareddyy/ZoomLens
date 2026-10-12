@@ -1,4 +1,4 @@
-// Proves the in-memory pipeline: video in, image out, without touching Zoom.
+// Checks the in-memory pipeline, video in and image out, without Zoom.
 //
 // Replays a recorded screen share through the frame buffer in small pieces, the
 // way it arrives from a live meeting, then asks for an image at several points
