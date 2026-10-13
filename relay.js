@@ -9,9 +9,16 @@
 //   3. reply() only delivers if the request is pending on that same session.
 
 import { WebSocketServer } from "ws";
+import { NO_CHANGE } from "./watch.js";
 
 // Shown by the panel while it waits.
-const EXPECTED_SECONDS = { describe: 6, explain: 12, followup: 3, ask: 7 };
+const EXPECTED_SECONDS = { describe: 6, explain: 12, followup: 3, ask: 7, changed: 5, colors: 9 };
+
+const MODES = Object.keys(EXPECTED_SECONDS);
+
+// What a participant can switch on, and what it's called when the daily limit
+// turns it off.
+const FEATURES = { changes: "screen changes are no longer read out", color: "Color Assist notes are off" };
 
 // One participant can have several sessions (two windows, two devices). They're
 // never merged, but rate limits are counted per participant.
@@ -25,7 +32,8 @@ const COOLDOWN_MS = Number(process.env.ZOOM_LENS_COOLDOWN_SECONDS ?? 5) * 1000;
 const DAILY_LIMIT = Number(process.env.ZOOM_LENS_DAILY_LIMIT ?? 60);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function createRelay(httpServer, { log, isStreamActive, answerRequest }) {
+// watchers maps a feature to the watch.js loop that serves it.
+export function createRelay(httpServer, { log, isStreamActive, answerRequest, watchers = {} }) {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
   const sessions = new Map(); // sessionId -> session
@@ -62,6 +70,37 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
     }
     seen.last = now;
     seen.count += 1;
+  }
+
+  // Change descriptions count towards the daily cap but not the cooldown, so
+  // one arriving never blocks the participant's own question.
+  function chargeDaily(key, now = Date.now()) {
+    const seen = usage.get(key);
+    if (!seen || now - seen.since >= DAY_MS) {
+      usage.set(key, { last: 0, count: 1, since: now });
+      return true;
+    }
+    if (seen.count >= DAILY_LIMIT) return false;
+    seen.count += 1;
+    return true;
+  }
+
+  const listeners = (feature, meetingUUID) =>
+    [...sessions.values()].filter((s) => s.features.has(feature) && s.meetingUUID === meetingUUID).length;
+
+  // One loop per meeting and feature, running while anyone there has it on.
+  function setFeature(session, feature, on, reason) {
+    if (session.features.has(feature) !== on) {
+      if (on) session.features.add(feature);
+      else session.features.delete(feature);
+      const count = listeners(feature, session.meetingUUID);
+      if (on && count === 1) watchers[feature].start(session.meetingUUID);
+      if (!on && count === 0) watchers[feature].stop(session.meetingUUID);
+      log(`RELAY ${session.id} turned ${feature} ${on ? "on" : "off"}`);
+    }
+    sendTo(session.id, { type: "watching", feature, on, ...(reason ? { reason } : {}) });
+    const latest = on && watchers[feature].latest(session.meetingUUID);
+    if (latest) sendTo(session.id, { type: "update", feature, text: latest });
   }
 
   // --- The only way out of this file ---------------------------------------
@@ -142,6 +181,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
       screenName: null,
       key: null,
       pending: new Map(), // requestId -> { mode, at }
+      features: new Set(),
     };
     sessions.set(session.id, session);
     log(`RELAY ${session.id} connected (${sessions.size} open)`);
@@ -207,7 +247,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
                  "addressed to anyone.", id);
             return;
           }
-          if (!["describe", "explain", "followup", "ask"].includes(mode)) {
+          if (!MODES.includes(mode)) {
             fail(session.id, "bad_request", `Unknown mode: ${mode}`, id);
             return;
           }
@@ -255,9 +295,10 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
             mode,
             question: question ?? null,
             previous: session.lastAnswer ?? null,
+            colorSafe: session.features.has("color"),
           })
             .then(({ text, note }) => {
-              if (mode !== "followup") session.lastAnswer = text;
+              if (mode !== "followup" && text !== NO_CHANGE) session.lastAnswer = text;
               reply(session.id, id, { type: "answer", text, ...(note ? { note } : {}) });
             })
             .catch((err) => {
@@ -265,6 +306,20 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
               fail(session.id, "internal", err.message, id);
             });
 
+          return;
+        }
+
+        case "watch": {
+          const feature = msg.feature ?? "changes";
+          if (!session.identified) {
+            fail(session.id, "not_identified", "This session has no participant identity.");
+            return;
+          }
+          if (!watchers[feature]) {
+            fail(session.id, "bad_request", `${feature} is not available on this server.`);
+            return;
+          }
+          setFeature(session, feature, Boolean(msg.on));
           return;
         }
 
@@ -279,6 +334,10 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
     });
 
     ws.on("close", () => {
+      for (const feature of session.features) {
+        session.features.delete(feature);
+        if (listeners(feature, session.meetingUUID) === 0) watchers[feature].stop(session.meetingUUID);
+      }
       release(session);
       sessions.delete(session.id);
       const dropped = session.pending.size;
@@ -309,6 +368,23 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest }) 
       }
       if (told) {
         log(`RELAY told ${told} session(s) that the screen share is ${active ? "on" : "off"}`);
+      }
+    },
+
+    // Something a watcher found, delivered to each participant in the meeting
+    // who has that feature on, individually.
+    announce(feature, meetingUUID, text) {
+      for (const session of sessions.values()) {
+        if (!session.features.has(feature) || session.meetingUUID !== meetingUUID) continue;
+        // Not an error message: that would land on whatever request the
+        // participant has in flight.
+        if (!chargeDaily(session.key)) {
+          setFeature(session, feature, false,
+                     `You have reached today's limit of ${DAILY_LIMIT} answers, so ${FEATURES[feature]}.`);
+          continue;
+        }
+        session.lastAnswer = text;
+        sendTo(session.id, { type: "update", feature, text });
       }
     },
 

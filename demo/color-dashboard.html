@@ -1,0 +1,101 @@
+<!doctype html>
+<!--
+  A screen to share when demonstrating Color Assist. Status, the chart's two
+  series and the heatmap are told apart by color alone, as on many real
+  dashboards. Open it in a browser and share that window.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Platform Roadmap</title>
+<style>
+  :root { --red: #d64545; --amber: #e6a23c; --green: #3a9d5d; --ink: #1d2433; --muted: #6b7385; --line: #e3e6ec; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: #f6f7f9; }
+  header { padding: 22px 32px 10px; }
+  h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  main { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; padding: 12px 32px 32px; }
+  section { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  h2 { margin: 0 0 12px; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; }
+  .key { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .key span { display: inline-flex; align-items: center; gap: 5px; }
+  .key .dot { width: 9px; height: 9px; }
+  .chart { grid-column: 2; grid-row: 1; }
+  .heat { grid-column: 1 / -1; }
+  .grid { display: grid; grid-template-columns: 120px repeat(8, 1fr); gap: 3px; font-size: 12px; }
+  .grid div { height: 28px; border-radius: 3px; }
+  .grid .name { background: none; display: flex; align-items: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Platform Roadmap, Q4</h1>
+  <p>Weekly review</p>
+</header>
+<main>
+  <section>
+    <h2>Projects</h2>
+    <table>
+      <thead><tr><th>Project</th><th>Owner</th><th>Status</th><th>Due</th></tr></thead>
+      <tbody>
+        <tr><td>API Migration</td><td>Priya</td><td><span class="dot" style="background:var(--amber)"></span></td><td>Nov 14</td></tr>
+        <tr><td>Database Upgrade</td><td>Marco</td><td><span class="dot" style="background:var(--green)"></span></td><td>Nov 21</td></tr>
+        <tr><td>Authentication Rewrite</td><td>Lena</td><td><span class="dot" style="background:var(--red)"></span></td><td>Dec 2</td></tr>
+        <tr><td>Search Indexing</td><td>Sam</td><td><span class="dot" style="background:var(--green)"></span></td><td>Dec 9</td></tr>
+        <tr><td>Billing Service</td><td>Ade</td><td><span class="dot" style="background:var(--amber)"></span></td><td>Dec 16</td></tr>
+      </tbody>
+    </table>
+    <div class="key">
+      <span><i class="dot" style="background:var(--green)"></i>On track</span>
+      <span><i class="dot" style="background:var(--amber)"></i>At risk</span>
+      <span><i class="dot" style="background:var(--red)"></i>Blocked</span>
+    </div>
+  </section>
+
+  <section class="chart">
+    <h2>Error rate by week (%)</h2>
+    <svg viewBox="0 0 420 220" width="100%" role="img" aria-label="Line chart">
+      <g stroke="#e3e6ec">
+        <line x1="40" y1="20" x2="410" y2="20"/><line x1="40" y1="70" x2="410" y2="70"/>
+        <line x1="40" y1="120" x2="410" y2="120"/><line x1="40" y1="170" x2="410" y2="170"/>
+      </g>
+      <g fill="#6b7385" font-size="11">
+        <text x="10" y="24">4.0</text><text x="10" y="74">3.0</text><text x="10" y="124">2.0</text><text x="10" y="174">1.0</text>
+        <text x="40" y="192">W1</text><text x="132" y="192">W2</text><text x="224" y="192">W3</text><text x="316" y="192">W4</text><text x="396" y="192">W5</text>
+      </g>
+      <polyline fill="none" stroke="#d64545" stroke-width="3" points="45,150 137,130 229,95 321,70 405,40"/>
+      <polyline fill="none" stroke="#3a9d5d" stroke-width="3" points="45,60 137,85 229,110 321,135 405,155"/>
+      <g font-size="12" fill="#1d2433">
+        <rect x="40" y="203" width="12" height="4" fill="#d64545"/><text x="58" y="209">Checkout</text>
+        <rect x="140" y="203" width="12" height="4" fill="#3a9d5d"/><text x="158" y="209">Search</text>
+      </g>
+    </svg>
+  </section>
+
+  <section class="heat">
+    <h2>Incidents per team, last 8 weeks</h2>
+    <div class="grid" id="heat"></div>
+    <div class="key">
+      <span><i class="dot" style="background:#3a9d5d"></i>None</span>
+      <span><i class="dot" style="background:#e6a23c"></i>A few</span>
+      <span><i class="dot" style="background:#d64545"></i>Many</span>
+    </div>
+  </section>
+</main>
+<script>
+  const teams = { Payments: "00122110", Identity: "12222210", Search: "00000100", Platform: "01112221" };
+  const shade = ["#3a9d5d", "#e6a23c", "#d64545"];
+  const grid = document.getElementById("heat");
+  for (const [team, weeks] of Object.entries(teams)) {
+    grid.insertAdjacentHTML("beforeend", `<div class="name">${team}</div>`);
+    for (const w of weeks) grid.insertAdjacentHTML("beforeend", `<div style="background:${shade[w]}"></div>`);
+  }
+</script>
+</body>
+</html>

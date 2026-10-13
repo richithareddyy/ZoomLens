@@ -10,6 +10,8 @@ import { createFrameBuffer } from "./framebuffer.js";
 import { decodeToJpeg } from "./decode.js";
 import { produceAnswer, explainFailure } from "./answer.js";
 import { captureLocalScreen } from "./screen.js";
+import { createWatcher, NO_CHANGE } from "./watch.js";
+import { analyzeColors, summarize } from "./colors.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -170,12 +172,15 @@ function newestCapture() {
 const ALLOW_LOCAL_SCREEN = process.env.ZOOM_LENS_LOCAL_SCREEN === "1";
 
 // Sources in order of how close each is to the real thing. Null if none is usable.
-async function currentScreen(meetingUUID) {
+// `quiet` keeps the watcher, which looks every couple of seconds, out of the log.
+async function currentScreen(meetingUUID, { quiet = false } = {}) {
+  const report = quiet ? () => {} : log;
+
   // 1. The meeting's media stream.
   const live = frameBuffers.get(meetingUUID)?.snapshot();
   if (live) {
     const { jpeg, ms } = await decodeToJpeg(live);
-    log(`ANSWER decoded the shared screen in ${ms} ms (${(jpeg.length / 1024).toFixed(0)} KB)`);
+    report(`ANSWER decoded the shared screen in ${ms} ms (${(jpeg.length / 1024).toFixed(0)} KB)`);
     return { jpeg, note: null };
   }
 
@@ -184,7 +189,7 @@ async function currentScreen(meetingUUID) {
   if (ALLOW_LOCAL_SCREEN) {
     try {
       const { jpeg, ms } = await captureLocalScreen();
-      log(`ANSWER read this machine's display in ${ms} ms (${(jpeg.length / 1024).toFixed(0)} KB)`);
+      report(`ANSWER read this machine's display in ${ms} ms (${(jpeg.length / 1024).toFixed(0)} KB)`);
       return {
         jpeg,
         note: "Read from this machine's display rather than the meeting's media stream.",
@@ -192,7 +197,7 @@ async function currentScreen(meetingUUID) {
     } catch (err) {
       // Usually macOS withholding screen-recording permission. Fall through to
       // the next source rather than failing a request that may still be answerable.
-      log(`ANSWER could not read this machine's display: ${err.message}`);
+      report(`ANSWER could not read this machine's display: ${err.message}`);
     }
   }
 
@@ -208,21 +213,25 @@ async function currentScreen(meetingUUID) {
   if (!clip) return null;
 
   const { jpeg, ms } = await decodeToJpeg(clip);
-  log(`ANSWER decoded a recording in ${ms} ms (${(jpeg.length / 1024).toFixed(0)} KB)`);
+  report(`ANSWER decoded a recording in ${ms} ms (${(jpeg.length / 1024).toFixed(0)} KB)`);
   return {
     jpeg,
     note: `This is from a recording (${path.basename(file)}), not a live screen share.`,
   };
 }
 
-async function answerRequest({ meetingUUID, mode, question, previous }) {
+async function answerRequest({ meetingUUID, mode, question, previous, colorSafe }) {
   const screen = await currentScreen(meetingUUID);
   if (!screen) {
     throw new Error("There is no screen to look at yet. Ask again once somebody is sharing.");
   }
 
+  const colors = colorSafe || mode === "colors" ? summarize(await analyzeColors(screen.jpeg)) : null;
+
   try {
-    const { text, ms, usage } = await produceAnswer({ jpeg: screen.jpeg, mode, question, previous });
+    const { text, ms, usage } = await produceAnswer({
+      jpeg: screen.jpeg, mode, question, previous, colorSafe, colors,
+    });
     log(
       `ANSWER ${mode} produced in ${(ms / 1000).toFixed(1)}s ` +
       `(${usage.input_tokens} in / ${usage.output_tokens} out)`
@@ -319,6 +328,46 @@ app.post("/", (req, res) => {
 // The WebSocket relay shares the port, so the panel connects back to the same address.
 const server = http.createServer(app);
 
+// Both watchers look every couple of seconds; when both are on in a meeting,
+// one decode serves the two.
+const recent = new Map(); // meetingUUID -> pending or settled capture
+
+function watchedScreen(meetingUUID) {
+  if (!recent.has(meetingUUID)) {
+    recent.set(meetingUUID, currentScreen(meetingUUID, { quiet: true }));
+    setTimeout(() => recent.delete(meetingUUID), 1500);
+  }
+  return recent.get(meetingUUID);
+}
+
+async function ask(args) {
+  try {
+    return (await produceAnswer(args)).text;
+  } catch (err) {
+    throw new Error(explainFailure(err));
+  }
+}
+
+const changes = createWatcher({
+  capture: watchedScreen,
+  describe: (jpeg, previous) => ask({ jpeg, mode: "changed", previous }),
+  announce: (meetingUUID, text) => relay.announce("changes", meetingUUID, text),
+  log,
+});
+
+// The model is only asked when the pixels show colors that could be confused.
+const color = createWatcher({
+  capture: watchedScreen,
+  describe: async (jpeg, previous) => {
+    const found = await analyzeColors(jpeg);
+    if (!found.risky) return NO_CHANGE;
+    return ask({ jpeg, mode: "colorcheck", previous, colorSafe: true, colors: summarize(found) });
+  },
+  announce: (meetingUUID, text) => relay.announce("color", meetingUUID, text),
+  log,
+  name: "COLOR",
+});
+
 relay = createRelay(server, {
   log,
   // With a fallback source available, requests can be answered without a live share.
@@ -327,6 +376,7 @@ relay = createRelay(server, {
     ALLOW_LOCAL_SCREEN ||
     (ALLOW_RECORDED && Boolean(newestCapture())),
   answerRequest,
+  watchers: { changes, color },
 });
 
 server.listen(PORT, () => {

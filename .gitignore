@@ -42,6 +42,13 @@ lib/linux-x64/*
 !answer.js
 !screen.js
 !refresh-token.js
+!change.js
+!watch.js
+!eval-changes.js
+!test-change.js
+!test-watch.js
+!colors.js
+!test-colors.js
 !public/*.js
 !site/*.js
 

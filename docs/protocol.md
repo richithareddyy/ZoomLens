@@ -71,7 +71,7 @@ Asks for an answer about the screen currently being shared.
 }
 ```
 
-`mode` is `describe`, `explain`, `ask` or `followup`.
+`mode` is `describe`, `explain`, `ask`, `followup`, `changed` or `colors`.
 
 | Mode | Meaning | `question` |
 |---|---|---|
@@ -79,11 +79,34 @@ Asks for an answer about the screen currently being shared.
 | `explain` | What the content means | ignored |
 | `ask` | A question about the current screen, standing on its own | required |
 | `followup` | A question scoped to this session's previous answer | required |
+| `changed` | What is different since this session's previous answer, or a short description if there is none | ignored |
+| `colors` | What each color on screen means, named by label and position rather than color | ignored |
+
+With Color Assist on (see `watch`), every mode is answered without relying on
+color, and the backend adds its own pixel analysis of the colors to the request.
 
 `ask` exists because the panel has a persistent input, and a
 question typed before any answer exists has no previous answer to be scoped to,
 which is what `followup` requires. Everything already using the first three
 modes is unaffected.
+
+### `watch`
+
+Turns a feature on or off for this session.
+
+```json
+{ "type": "watch", "feature": "changes", "on": true }
+```
+
+| `feature` | While on |
+|---|---|
+| `changes` (the default) | The screen is described again each time it changes in a way worth mentioning |
+| `color` | Answers are color-safe, and a note is sent when a new screen tells things apart by color alone |
+
+The backend replies with `watching`. While either is on, it looks at the
+meeting's screen every 2 seconds and sends `update` when there is something to
+say. Settings belong to the connection: after a reconnect the panel sends them
+again.
 
 ### `ping`
 
@@ -137,6 +160,27 @@ The result, addressed to the one session that asked.
 }
 ```
 
+### `watching`
+
+Confirms the `watch` setting. `reason` is present when the backend turned it off
+itself, which happens when the participant reaches the daily limit.
+
+```json
+{ "type": "watching", "feature": "changes", "on": false, "reason": "You have reached today's limit..." }
+```
+
+### `update`
+
+A screen change described, or a Color Assist note. It has no `id` because
+nobody asked for it.
+
+```json
+{ "type": "update", "feature": "changes", "text": "New slide: churn by month, falling from 6% to 3%." }
+```
+
+Each one counts towards the participant's daily limit but not the gap between
+requests, so an update never blocks a question.
+
 ### `error`
 
 ```json
@@ -173,5 +217,4 @@ The result, addressed to the one session that asked.
 Deliberately left out:
 
 - Cancelling a request in flight
-- Automatic refresh when the shared screen changes, removed from scope
 - Any message from one participant that another participant can observe

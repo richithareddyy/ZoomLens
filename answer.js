@@ -29,23 +29,58 @@ If the answer genuinely is not visible on screen, say so plainly rather than gue
 You are given your previous answer about this screen and a follow-up question. Answer only that question, using the image as the source of truth. Stay tightly scoped. Do not re-describe the whole screen.
 
 If the answer genuinely is not visible on screen, say so plainly instead of guessing. Under 120 words. No preamble.`,
+
+  changed: `You describe a screen share in a Zoom meeting for a participant who is blind or has low vision and listens with a screen reader. They can hear the presenter, so give them what is only visible, not what the presenter would be saying anyway.
+
+If you are given your previous description, say only what is new or different now: a new slide, new numbers, a changed chart, another part of a page. If nothing a viewer would care about has changed, reply with exactly: No meaningful change.
+
+Without a previous description, say what kind of content is shown and its main point.
+
+Lead with the most important fact. One to three short sentences, under 50 words. No preamble.`,
+
+  colors: `You are helping a participant with a color vision deficiency read a screen share in a Zoom meeting.
+
+Say what the colors on screen mean. For each color that carries meaning (a status, a category, a chart series, a heatmap scale, a map region), say what it stands for and which items have it, naming the items by their labels, text, values or positions. Use a legend if there is one. If two colors look alike, say how else to tell them apart, if anything does.
+
+If color carries no meaning here, say so in one sentence. Under 150 words. No preamble.`,
+
+  colorcheck: `You check a screen share in a Zoom meeting for a participant with a color vision deficiency.
+
+Decide whether something on screen is told apart by color alone: statuses, categories, chart series or a scale, with no text, label, pattern or shape carrying the same information next to it. If so, write one short sentence saying what is told apart only by color, for example: This chart tells its two lines apart only by color.
+
+If nothing is, or your previous note already says this about the same content, reply with exactly: No meaningful change.`,
 };
 
 // Describe should feel immediate; Explain is worth more thinking.
-export const EFFORT = { describe: "low", explain: "high", followup: "low", ask: "low" };
+export const EFFORT = {
+  describe: "low", explain: "high", followup: "low", ask: "low", changed: "low",
+  colors: "medium", colorcheck: "low",
+};
+
+// Answers are read aloud by screen readers, where markdown comes out as noise.
+// "Item: value" lines read fine aloud, and the panel shows them as a list.
+const SPOKEN = `
+
+Write plain text with no markdown, asterisks, hashes or bullet characters. When the answer is naturally a set of items that each have a status, value or change (project statuses, metrics, a chart's series), put each item on its own line as "Item: value", for example "Checkout error rate: 1.4% to 3.6%, rising". If there are separate groups, put a short heading line ending in a colon above each. Otherwise write plain sentences. If a mouse pointer, laser pointer or annotation is visible, say what it is on.`;
+
+// With Color Assist on, every answer has to work without seeing color.
+const COLOR_SAFE = `
+
+The participant has a color vision deficiency. Never identify anything by its color alone: refer to it by its label, text, value, position or shape. Where color carries meaning, state the meaning itself, and you may add the color in brackets so it can be matched up, for example: Authentication Rewrite is blocked (red). Pixel analysis of the screen may be given below; use it, but trust what you see in the image where they disagree.`;
 
 // A display capture includes the Zoom window, tiles and this panel. Early answers
 // described the panel back to the user, so the model is told to ignore it.
 const IGNORE_OWN_INTERFACE = `
 
-The image may be a photograph of an entire computer display rather than the shared content alone. If so, it will contain the Zoom meeting window, participant video tiles and name labels, browser tabs and bookmarks, the dock, the menu bar, and a panel titled "Zoom Lens" showing Describe, Explain and Follow-up controls.
+The image may be a photograph of an entire computer display rather than the shared content alone. If so, it will contain the Zoom meeting window, participant video tiles and name labels, browser tabs and bookmarks, the dock, the menu bar, and a panel titled "ZoomLens" with its own buttons and earlier answers.
 
-None of that is the shared content. Ignore all of it, and never mention the Zoom Lens panel, its controls, or its own previous answer. Describe only what is being presented.`;
+None of that is the shared content. Ignore all of it, and never mention the ZoomLens panel, its controls, or its own previous answer. Describe only what is being presented.`;
 
 const client = new Anthropic();
 
 // previous is the last answer on this session; followup needs it for scope.
-export async function produceAnswer({ jpeg, mode, question, previous }) {
+// colors is the pixel analysis from colors.js, when Color Assist is on.
+export async function produceAnswer({ jpeg, mode, question, previous, colorSafe = false, colors = null }) {
   if (!MODEL) throw new Error("VISION_MODEL is not set in .env");
   if (!PROMPTS[mode]) throw new Error(`Unknown mode: ${mode}`);
   if (mode === "followup" && !previous) {
@@ -61,11 +96,27 @@ export async function produceAnswer({ jpeg, mode, question, previous }) {
     },
   ];
 
+  if (colors) content.push({ type: "text", text: colors });
+
   if (mode === "followup") {
     content.push({
       type: "text",
       text: `Your previous answer about this screen:\n\n${previous}\n\nFollow-up question: ${question}`,
     });
+  } else if (mode === "changed") {
+    content.push({
+      type: "text",
+      text: previous
+        ? `Your previous description:\n\n${previous}\n\nWhat is different now?`
+        : "Describe what is on screen.",
+    });
+  } else if (mode === "colorcheck") {
+    content.push({
+      type: "text",
+      text: previous ? `Your previous note:\n\n${previous}\n\nCheck this screen.` : "Check this screen.",
+    });
+  } else if (mode === "colors") {
+    content.push({ type: "text", text: "What do the colors mean?" });
   } else if (mode === "ask") {
     content.push({ type: "text", text: question });
   } else {
@@ -75,7 +126,7 @@ export async function produceAnswer({ jpeg, mode, question, previous }) {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 16000,
-    system: PROMPTS[mode] + IGNORE_OWN_INTERFACE,
+    system: PROMPTS[mode] + SPOKEN + (colorSafe || mode.startsWith("color") ? COLOR_SAFE : "") + IGNORE_OWN_INTERFACE,
     thinking: { type: "adaptive" },
     output_config: { effort: EFFORT[mode] },
     messages: [{ role: "user", content }],

@@ -31,6 +31,9 @@ It is discussed in its own section below.
 |---|---|---|---|
 | Screen share video | Zoom RTMS, as H.264 | Memory, and a file on disk during development | Memory holds only since the last keyframe. The file persists until deleted by hand. |
 | Still images of the screen | Decoded from that video | Sent to the Anthropic API to produce an answer | Written to `snapshots/` during development |
+| Screen fingerprints | A 64x36 greyscale reduction of a still, made every 2 seconds while someone has screen changes read out | Backend memory only | Until the next one replaces it |
+| Color analysis | The colors found in a still and where they are, made while someone has Color Assist on | Sent to the Anthropic API as text with that participant's requests | Not stored beyond the request |
+| The Color Assist setting | The panel | The Zoom client's local storage on that device | Until changed |
 | Meeting identifier | Zoom Apps SDK, `getMeetingUUID` | Backend memory only | For the life of the connection |
 | Participant identifier and display name | Zoom Apps SDK, `getUserContext` | Backend memory only | For the life of the connection |
 | The participant's typed follow-up question | The panel | Sent to the Anthropic API with the image | Not stored beyond the request |
@@ -102,6 +105,12 @@ verifying identity against Zoom rather than accepting the panel's word for it.
 the Anthropic API to be interpreted. Whatever was on the presenter's screen,
 including anything they did not intend to share, is transmitted to a third
 party. There is no filtering or redaction of any kind before sending.
+
+**Reading out screen changes and Color Assist send more of the screen.** While
+a participant has changes read out, a still is sent to the Anthropic API each
+time the screen changes, up to one every 10 seconds, rather than only when they
+ask. Color Assist sends one only when a changed screen contains colors that
+could be confused. The answers still go only to that participant.
 
 **Nothing is encrypted at rest.** During development, captured video is written
 to `captures/` and decoded images to `snapshots/`. These are images and
