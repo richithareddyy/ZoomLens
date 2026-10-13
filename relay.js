@@ -4,6 +4,7 @@
 // than in the panel, which whoever runs it can change. Three rules:
 //
 //   1. One connection is one session, bound to one participant on hello.
+//      Who that is comes from verify(), never from the IDs the panel sends.
 //   2. sendTo() is the only way a message leaves this file, and it takes a
 //      session id, not a socket. There is no broadcast.
 //   3. reply() only delivers if the request is pending on that same session.
@@ -32,8 +33,11 @@ const COOLDOWN_MS = Number(process.env.ZOOM_LENS_COOLDOWN_SECONDS ?? 5) * 1000;
 const DAILY_LIMIT = Number(process.env.ZOOM_LENS_DAILY_LIMIT ?? 60);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// watchers maps a feature to the watch.js loop that serves it.
-export function createRelay(httpServer, { log, isStreamActive, answerRequest, watchers = {} }) {
+// watchers maps a feature to the watch.js loop that serves it. verify turns a
+// hello into { meetingUUID, participantUUID }, or null if it can't be trusted.
+export function createRelay(httpServer, { log, isStreamActive, answerRequest, watchers = {}, verify }) {
+  if (typeof verify !== "function") throw new Error("createRelay needs a verify function");
+
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
   const sessions = new Map(); // sessionId -> session
@@ -154,7 +158,7 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest, wa
 
     const others = byParticipant.get(key).size - 1;
     log(
-      `RELAY ${session.id} bound to ${session.screenName ?? "unnamed"} ` +
+      `RELAY ${session.id} bound to a verified participant ` +
       `in meeting ${String(session.meetingUUID).slice(0, 12)}...` +
       (others ? ` (${others} other session for this participant)` : "")
     );
@@ -178,7 +182,6 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest, wa
       identified: false,
       meetingUUID: null,
       participantUUID: null,
-      screenName: null,
       key: null,
       pending: new Map(), // requestId -> { mode, at }
       features: new Set(),
@@ -214,9 +217,9 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest, wa
             return;
           }
           session.greeted = true;
-          session.meetingUUID = msg.meetingUUID ?? null;
-          session.participantUUID = msg.participantUUID ?? null;
-          session.screenName = msg.screenName ?? null;
+          const who = verify(msg);
+          session.meetingUUID = who?.meetingUUID ?? null;
+          session.participantUUID = who?.participantUUID ?? null;
           session.identified = Boolean(session.meetingUUID && session.participantUUID);
 
           if (session.identified) {
@@ -275,10 +278,8 @@ export function createRelay(httpServer, { log, isStreamActive, answerRequest, wa
 
           session.pending.set(id, { mode, at: Date.now() });
 
-          log(
-            `RELAY ${session.id} (${session.screenName ?? "unnamed"}) ` +
-            `requested ${mode}${question ? `: "${question}"` : ""}`
-          );
+          // The question itself isn't logged: it can say as much as the screen.
+          log(`RELAY ${session.id} requested ${mode}${question ? ` (${question.length}-character question)` : ""}`);
 
           // sendTo, not reply: reply would clear the pending request the answer needs.
           sendTo(session.id, {

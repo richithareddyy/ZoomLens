@@ -46,17 +46,22 @@ until this arrives.
 ```json
 {
   "type": "hello",
-  "meetingUUID": "clRQeYiYTjW0kV24udOrOA==",
-  "participantUUID": "16778240",
-  "screenName": "Alex Chen"
+  "ticket": "9f2c…",
+  "meetingUUID": "clRQeYiYTjW0kV24udOrOA=="
 }
 ```
 
-`meetingUUID` and `participantUUID` come from the Zoom Apps SDK. When the SDK
-is unavailable, for example when the panel is opened outside Zoom or the app
-lacks permission for those APIs, the panel sends `null` for both and the
-backend marks the session `unidentified`. An unidentified session may connect
-but may not request anything, because there is nobody to send the answer to.
+`ticket` is what identifies the session. The server writes it into the panel
+page when Zoom loads it with a valid encrypted app context, and takes the
+meeting and Zoom user from its own record of the ticket (see `trust.js`).
+`meetingUUID` is what the Zoom Apps SDK reported; it is only compared with the
+verified meeting and logged if they differ.
+
+Without a valid ticket, for example when the panel is opened outside Zoom or the
+server has restarted since the page loaded, the backend marks the session
+`unidentified`. An unidentified session may connect but may not request
+anything, because there is nobody to send the answer to. IDs in the message
+itself are never trusted.
 
 ### `request`
 

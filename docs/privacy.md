@@ -1,4 +1,4 @@
-# Zoom Lens privacy model
+# ZoomLens privacy model
 
 This document records what Zoom Lens guarantees, how each guarantee is
 enforced, and what it does not guarantee. It is written to be the starting
@@ -12,11 +12,11 @@ a residual risk it is stated plainly, including the risks that are awkward.
 
 A participant in a Zoom meeting opens Zoom Lens from the Apps panel. While
 somebody else is sharing their screen, that participant can ask for one of
-three things:
+these, among others:
 
 - **Describe.** What is on screen right now, in plain language.
 - **Explain.** What the content means rather than what it says.
-- **Follow-up.** One scoped question about the previous answer.
+- **A question**, or a follow-up scoped to the previous answer.
 
 The answer is shown only to the participant who asked. Other participants do
 not see that a request was made, and do not see the answer.
@@ -29,19 +29,18 @@ It is discussed in its own section below.
 
 | Data | Where it comes from | Where it goes | Kept |
 |---|---|---|---|
-| Screen share video | Zoom RTMS, as H.264 | Memory, and a file on disk during development | Memory holds only since the last keyframe. The file persists until deleted by hand. |
-| Still images of the screen | Decoded from that video | Sent to the Anthropic API to produce an answer | Written to `snapshots/` during development |
+| Screen share video | Zoom RTMS, as H.264 | Memory. Also `captures/` on disk, only with `ZOOM_LENS_SAVE_CAPTURES=1` | Memory holds only since the last keyframe. A saved file persists until deleted by hand. |
+| Still images of the screen | Decoded from that video | Sent to the Anthropic API to produce an answer | Memory, plus a temporary file during decoding that is deleted afterwards. `snapshot.js` and `describe.js`, run by hand, write to `snapshots/`. |
 | Screen fingerprints | A 64x36 greyscale reduction of a still, made every 2 seconds while someone has screen changes read out | Backend memory only | Until the next one replaces it |
 | Color analysis | The colors found in a still and where they are, made while someone has Color Assist on | Sent to the Anthropic API as text with that participant's requests | Not stored beyond the request |
 | The Color Assist setting | The panel | The Zoom client's local storage on that device | Until changed |
-| Meeting identifier | Zoom Apps SDK, `getMeetingUUID` | Backend memory only | For the life of the connection |
-| Participant identifier and display name | Zoom Apps SDK, `getUserContext` | Backend memory only | For the life of the connection |
-| The participant's typed follow-up question | The panel | Sent to the Anthropic API with the image | Not stored beyond the request |
+| Meeting identifier and Zoom user ID | Zoom's encrypted app context, sent with each panel load | Backend memory only, behind a random ticket | Up to 12 hours, or until the server restarts |
+| The participant's typed question | The panel | Sent to the Anthropic API with the image | Not stored, and not logged; the log records its length only |
 | The generated answer | Anthropic API | The one participant who asked | Not stored beyond the request |
 
 Audio and transcripts are received from RTMS because the stream carries them,
-but nothing is done with them and they are not sent anywhere. They are logged
-as counts only.
+but nothing is done with them and they are not sent anywhere. They are counted
+and never logged or stored. Participant names are not logged either.
 
 ## What is guaranteed
 
@@ -72,11 +71,26 @@ Three properties of the code make it structural rather than a matter of care:
    that tried to deliver one participant's answer to another would be rejected
    rather than silently delivered.
 
-**A session with no identity cannot make a request.** If the panel fails to
-obtain a meeting and participant identifier from Zoom, the session is marked
-unidentified and every request is refused with `not_identified`. The reasoning
-is that an answer that cannot be addressed to a specific person should not be
-produced at all.
+**Who is asking comes from Zoom, not from the panel.** When Zoom loads the
+panel it attaches an encrypted app context (the `X-Zoom-App-Context` header),
+AES-256-GCM under a key only Zoom and this server hold. The server checks it and
+its expiry, and writes a random ticket into the page. The panel's `hello`
+carries that ticket, and the relay takes the meeting and user from the server's
+record of it (`createTickets` in `trust.js`, `verify` in `relay.js`). IDs the
+panel sends on its own count for nothing. `test-trust.js` checks this,
+including a panel that sends another participant's IDs.
+
+**A session with no identity cannot make a request.** Without a valid ticket
+the session is marked unidentified and every request is refused with
+`not_identified`. An answer that cannot be addressed to a specific person
+should not be produced at all.
+
+**Webhooks are only acted on when Zoom signed them.** Every request to the
+webhook route, the URL validation challenge included, must carry Zoom's
+`x-zm-signature` over its exact body, be less than five minutes old, and not
+repeat a signature already seen (`createSignatureCheck` in `trust.js`).
+Checking the challenge matters: answering an unsigned one would hand anyone the
+HMAC of a string of their choosing, which is a valid signature.
 
 ## What is not guaranteed
 
@@ -92,14 +106,13 @@ is not being taken from them, but the processing of it is invisible to them.
 Whether that is acceptable is a judgement for review rather than something the
 code can settle.
 
-**A participant could claim to be someone else.** Identity arrives in the
-`hello` message from the panel, and the backend trusts it. A participant who
-modified the panel could send another participant's identifier. Today this
-gains them nothing, because answers are addressed to the session that asked and
-the participant index is not used for delivery, so an impostor would receive
-only their own answers. It matters if anything later routes by participant
-rather than by session, and it should be closed before then. Closing it means
-verifying identity against Zoom rather than accepting the panel's word for it.
+**A ticket is a bearer token.** Whoever holds a panel's ticket is treated as
+that participant until it expires, after 12 hours. It only ever appears in the
+page Zoom loaded for that participant and in their WebSocket messages, but it
+is not bound to the connection. Tickets live in memory, so a server restart
+forgets them and the panel has to be reopened from Zoom. In a breakout room
+Zoom's context names the breakout room, which may not match the meeting the
+screen share is captured from; this has not been tested.
 
 **Screen content leaves the machine.** Images of the shared screen are sent to
 the Anthropic API to be interpreted. Whatever was on the presenter's screen,
@@ -112,17 +125,19 @@ time the screen changes, up to one every 10 seconds, rather than only when they
 ask. Color Assist sends one only when a changed screen contains colors that
 could be confused. The answers still go only to that participant.
 
-**Nothing is encrypted at rest.** During development, captured video is written
-to `captures/` and decoded images to `snapshots/`. These are images and
-recordings of other people's screens and should be treated the same as a
-meeting recording. They are excluded from version control but are stored in
-plain form on the developer's machine and are never deleted automatically.
+**Nothing is encrypted at rest.** With `ZOOM_LENS_SAVE_CAPTURES=1`, captured
+video is written to `captures/`, and the development scripts write decoded
+images to `snapshots/`. These are recordings of other people's screens and
+should be treated the same as a meeting recording. They are excluded from
+version control but are stored in plain form and never deleted automatically.
+If the project folder is in a synced location, such as a Desktop synced to
+iCloud, they are uploaded with it.
 
 **There is no retention policy.** Nothing expires. Files accumulate until
 removed by hand.
 
-**There is no audit trail.** The application logs that a request was made and
-by which session, to the terminal only. There is no durable record of who asked
+**There is no audit trail.** The application logs that a request was made, its
+mode, and by which session, to the terminal only. There is no durable record of who asked
 what about whose screen, so a participant could not later be told that their
 shared screen had been read, even if that became desirable.
 
@@ -139,9 +154,9 @@ project uses the application.
   Anyone with the tunnel address can reach the panel and open a connection.
 - The model provider API key belongs to an individual rather than an
   organisation. Cost per request is roughly one to three cents.
-- Captured screen video is written to disk on every session, which the finished
-  application does not need to do. It exists so that decoding can be tested
-  against a real recording rather than a live meeting.
+- Saving captured screen video (`ZOOM_LENS_SAVE_CAPTURES=1`) exists so decoding
+  and change detection can be tested against a real recording. It is off by
+  default and should stay off in any real meeting.
 
 ## Open questions for review
 

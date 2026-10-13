@@ -16,7 +16,11 @@ const QUIET = () => {};
 // --- Harness ---------------------------------------------------------------
 
 const server = http.createServer();
-const relay = createRelay(server, { log: QUIET, isStreamActive: () => true });
+// Routing, not identity, is under test here (test-trust.js covers identity),
+// so the IDs each test connection sends are taken at face value.
+const trustHello = (m) =>
+  m.meetingUUID && m.participantUUID ? { meetingUUID: m.meetingUUID, participantUUID: m.participantUUID } : null;
+const relay = createRelay(server, { log: QUIET, isStreamActive: () => true, verify: trustHello });
 await new Promise((r) => server.listen(PORT, r));
 
 const results = [];

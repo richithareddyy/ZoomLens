@@ -57,6 +57,7 @@ The preferred input is the meeting's RTMS screen-share stream. Two development f
 | --- | --- |
 | `ZOOM_LENS_LOCAL_SCREEN=1` | Capture the backend machine's display on macOS; requires Screen Recording permission and may include content outside Zoom. |
 | `ZOOM_LENS_ALLOW_RECORDED=1` | Use the newest file in `captures/` when no live input is available. This is not scoped to a meeting. |
+| `ZOOM_LENS_SAVE_CAPTURES=1` | Save incoming screen-share video to `captures/`, for the recorded fallback, `snapshot.js`, and `eval-changes.js`. |
 
 Both are off by default, and fallback answers carry a source note. Keep them confined to controlled local demonstrations. `ZOOM_LENS_WATCH_SECONDS` (default 2) sets how often the accessibility modes look at the screen.
 
@@ -67,6 +68,7 @@ These scripts start their own relay and do not call the model:
 ```bash
 node test-isolation.js
 node test-ratelimit.js
+node test-trust.js    # app context, tickets, and webhook signatures
 node test-change.js   # change detection on synthetic screens
 node test-colors.js   # color analysis against published values and synthetic screens
 node test-watch.js    # both modes reach only the participants who turned them on
@@ -84,10 +86,10 @@ node eval-changes.js captures/example.h264  # replays a recording through change
 
 ## Current boundaries
 
-Session-scoped delivery is tested, but it is not verified participant authentication. The relay trusts IDs supplied in `hello`; a client can claim a meeting ID. The webhook route answers Zoom's URL-validation challenge but does not verify signatures on ordinary event requests. Neither the panel's installation status nor the request allowance closes those gaps.
+Who is asking comes from Zoom's encrypted app context, checked when Zoom loads the panel and turned into a random ticket the panel presents; IDs the panel sends on its own are ignored. Tickets are bearer tokens held in memory for up to 12 hours, so a server restart means reopening the panel. Webhook requests, the URL-validation challenge included, must carry a valid Zoom signature, be under five minutes old, and not be replays. [`trust.js`](trust.js) holds both checks and [`test-trust.js`](test-trust.js) tests them.
 
-Images and questions are sent to Anthropic without redaction, and with an accessibility mode on, so is a still each time the screen changes (up to one every 10 seconds; Color Assist only when its analysis finds colors that could be confused). `index.js` writes incoming screen-share video to `captures/` and logs transcript text; the relay logs typed questions. Recordings are not automatically deleted. These implementation details supersede the stronger retention and logging claims in the earlier [privacy notes](docs/privacy.md).
+Images and questions are sent to Anthropic without redaction, and with an accessibility mode on, so is a still each time the screen changes (up to one every 10 seconds; Color Assist only when its analysis finds colors that could be confused). Transcripts, questions, and participant names are not logged; the log records request modes and question lengths. Screen-share video is written to `captures/` only with `ZOOM_LENS_SAVE_CAPTURES=1`, and saved recordings are not automatically deleted. The [privacy notes](docs/privacy.md) describe what is and isn't protected.
 
 The app does not send its own presenter notification when a question is asked; that does not establish what Zoom displays about RTMS capture. Closing a connection loses its follow-up context. Answers can misread a screen, and the macOS display fallback cannot isolate shared content from the rest of the display.
 
-[Panel protocol](docs/protocol.md) · [Deployment notes](docs/deploy.md) · [Earlier privacy design notes](docs/privacy.md)
+[Panel protocol](docs/protocol.md) · [Deployment notes](docs/deploy.md) · [Privacy notes](docs/privacy.md)

@@ -34,7 +34,6 @@ lib/linux-x64/*
 !snapshot.js
 !start-rtms.js
 !zoom-auth.js
-!test-relay.js
 !test-isolation.js
 !test-snapshot.js
 !test-answer.js
@@ -49,6 +48,8 @@ lib/linux-x64/*
 !test-watch.js
 !colors.js
 !test-colors.js
+!trust.js
+!test-trust.js
 !public/*.js
 !site/*.js
 

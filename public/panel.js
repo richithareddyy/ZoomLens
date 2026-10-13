@@ -21,7 +21,7 @@ const ui = {
 const KEEPALIVE_MS = 30000;
 const BACKOFF_MS = [1000, 2000, 5000, 10000, 20000, 30000];
 
-let identity = null;        // { meetingUUID, participantUUID, screenName }
+let identity = null;        // { meetingUUID } as the SDK reports it
 let zoomState = "checking"; // checking | ok | outside | elsewhere | refused
 let socket = null;
 let identified = false;
@@ -359,11 +359,7 @@ async function getIdentity() {
 
   zoomState = "ok";
   diag("dZoom", "connected");
-  return {
-    meetingUUID: meeting.meetingUUID,
-    participantUUID: user.participantUUID ?? null,
-    screenName: user.screenName ?? null,
-  };
+  return { meetingUUID: meeting.meetingUUID };
 }
 
 // --- Connection -------------------------------------------------------------
@@ -391,11 +387,12 @@ function connect() {
 
   socket.addEventListener("open", () => {
     attempt = 0;
+    // The ticket is what identifies this panel; the meeting is only reported
+    // so the server can notice if the SDK disagrees with Zoom's context.
     socket.send(JSON.stringify({
       type: "hello",
+      ticket: document.querySelector('meta[name="zoomlens-ticket"]')?.content || null,
       meetingUUID: identity?.meetingUUID ?? null,
-      participantUUID: identity?.participantUUID ?? null,
-      screenName: identity?.screenName ?? null,
     }));
 
     // Proxies drop idle connections during quiet stretches of a meeting.
@@ -414,6 +411,13 @@ function connect() {
         identified = Boolean(msg.identified);
         streamActive = Boolean(msg.streamActive);
         diag("dLink", `connected, session ${msg.sessionId}`);
+        // Inside a meeting but not verified: the page needs a fresh load from
+        // Zoom, for example after the server restarted and forgot its tickets.
+        if (!identified && zoomState === "ok") {
+          showNotice("This panel couldn't be verified", "Reopen ZoomLens from the meeting's Apps menu.");
+        } else if (identified) {
+          ui.notice.hidden = true;
+        }
         // The server forgets on disconnect, so ask again once per connection.
         // It sends ready again whenever sharing starts or stops.
         if (identified && !subscribed) {

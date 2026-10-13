@@ -12,6 +12,7 @@ import { produceAnswer, explainFailure } from "./answer.js";
 import { captureLocalScreen } from "./screen.js";
 import { createWatcher, NO_CHANGE } from "./watch.js";
 import { analyzeColors, summarize } from "./colors.js";
+import { readAppContext, createTickets, createSignatureCheck } from "./trust.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +30,10 @@ let relay = null; // set once the HTTP server exists
 
 const CAPTURE_DIR = "captures";
 fs.mkdirSync(CAPTURE_DIR, { recursive: true });
+
+// Screen-share video is kept on disk only when asked for: it is a recording of
+// someone else's screen.
+const SAVE_CAPTURES = process.env.ZOOM_LENS_SAVE_CAPTURES === "1";
 
 const log = (...args) => console.log(`[${new Date().toLocaleTimeString()}]`, ...args);
 
@@ -92,7 +97,7 @@ function handleWebhookEvent({ event, payload }) {
   });
 
   client.onUserUpdate((op, participantInfo) => {
-    log(`Participant update: op=${op}`, participantInfo?.name ?? participantInfo);
+    log(`Participant update: op=${op}`);
   });
 
   // Audio arrives constantly; log every 100th frame as a heartbeat.
@@ -100,12 +105,14 @@ function handleWebhookEvent({ event, payload }) {
   client.onAudioData((data, size, timestamp, metadata) => {
     audioFrames++;
     if (audioFrames % 100 === 1) {
-      log(`AUDIO flowing: frame #${audioFrames}, ${size} bytes, from ${metadata?.userName}`);
+      log(`AUDIO flowing: frame #${audioFrames}, ${size} bytes`);
     }
   });
 
-  client.onTranscriptData((data, size, timestamp, metadata) => {
-    log(`TRANSCRIPT -- ${metadata?.userName}: ${data}`);
+  // Transcripts aren't used. Counted, never logged: they are what people said.
+  let transcriptLines = 0;
+  client.onTranscriptData(() => {
+    transcriptLines++;
   });
 
   // Answers only need a still of the screen, so 5 fps is plenty.
@@ -116,13 +123,13 @@ function handleWebhookEvent({ event, payload }) {
     fps: 5,
   });
 
-  // The raw H.264 is also written to disk, which snapshot.js can decode later.
-  const capturePath = path.join(
-    CAPTURE_DIR,
-    `deskshare-${new Date().toISOString().replace(/[:.]/g, "-")}.h264`
-  );
-  const captureFile = fs.createWriteStream(capturePath);
-  log(`Capturing screen share to ${capturePath}`);
+  // With ZOOM_LENS_SAVE_CAPTURES=1 the raw H.264 is also written to disk, for
+  // snapshot.js, eval-changes.js and the recorded fallback.
+  const capturePath = SAVE_CAPTURES
+    ? path.join(CAPTURE_DIR, `deskshare-${new Date().toISOString().replace(/[:.]/g, "-")}.h264`)
+    : null;
+  const captureFile = capturePath ? fs.createWriteStream(capturePath) : null;
+  if (capturePath) log(`Saving screen share to ${capturePath}`);
 
   const frames = createFrameBuffer({ log });
   if (meetingUUID) frameBuffers.set(meetingUUID, frames);
@@ -132,19 +139,21 @@ function handleWebhookEvent({ event, payload }) {
   client.onDeskshareData((data, size, timestamp, metadata) => {
     deskFrames++;
     deskBytes += size;
-    captureFile.write(data);
+    captureFile?.write(data);
     frames.push(data);
 
     if (deskFrames === 1 || deskFrames % 25 === 0) {
       const kb = (deskBytes / 1024).toFixed(0);
-      log(`DESKSHARE frame #${deskFrames}, ${size} bytes (${kb} KB total), from ${metadata?.userName}`);
+      log(`DESKSHARE frame #${deskFrames}, ${size} bytes (${kb} KB total)`);
     }
   });
 
   client.onLeave((reason) => {
-    log(`LEFT MEETING (reason: ${reason})`);
-    captureFile.end();
-    log(`Capture saved: ${capturePath} (${deskFrames} frames, ${(deskBytes / 1024).toFixed(0)} KB)`);
+    log(`LEFT MEETING (reason: ${reason}), ${transcriptLines} transcript lines ignored`);
+    if (captureFile) {
+      captureFile.end();
+      log(`Capture saved: ${capturePath} (${deskFrames} frames, ${(deskBytes / 1024).toFixed(0)} KB)`);
+    }
   });
 
   client.join(payload);
@@ -248,7 +257,8 @@ async function answerRequest({ meetingUUID, mode, question, previous, colorSafe 
 const PORT = Number(process.env.ZM_RTMS_PORT || process.env.PORT) || 8080;
 const app = express();
 
-app.use(express.json());
+// The raw body is kept because Zoom signs the exact bytes it sends.
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Zoom rejects a Home URL without these headers, both when the app is
 // configured and each time the panel opens.
@@ -270,12 +280,47 @@ app.use((req, res, next) => {
   next();
 });
 
-// The in-meeting panel, served from the address set as the Marketplace Home URL.
+// --- Who is asking -----------------------------------------------------------
+
+// See trust.js. Tickets outlast a long meeting's reconnects, but not a server
+// restart: after one, the panel has to be reopened from Zoom.
+const CLIENT_SECRET = process.env.ZM_RTMS_SECRET;
+const tickets = createTickets();
+
+function verifyHello(hello) {
+  const who = tickets.check(hello.ticket);
+  // The panel also reports the meeting from the SDK. A difference changes
+  // nothing, since the context wins, but it is worth knowing about.
+  if (who && hello.meetingUUID && hello.meetingUUID !== who.meetingUUID) {
+    log("PANEL reported a different meeting from its verified context; using the context");
+  }
+  return who;
+}
+
+const PANEL_HTML = path.join(HERE, "public", "index.html");
+
+app.get(["/", "/index.html"], (req, res) => {
+  const header = req.get("x-zoom-app-context");
+  let ticket = "";
+  if (header && CLIENT_SECRET) {
+    try {
+      ticket = tickets.issue(readAppContext(header, CLIENT_SECRET)) ?? "";
+    } catch (err) {
+      log(`PANEL ignored an app context: ${err.message}`);
+    }
+  }
+  const html = fs.readFileSync(PANEL_HTML, "utf8")
+    .replace('<meta name="zoomlens-ticket" content="">', `<meta name="zoomlens-ticket" content="${ticket}">`);
+  res.set("Cache-Control", "no-store").type("html").send(html);
+});
+
+// The rest of the panel (panel.js), served from the Marketplace Home URL.
 app.use(express.static(path.join(HERE, "public")));
 
 // Zoom won't deliver events until this endpoint proves it holds the app's secret
 // token: it sends a random string and expects the HMAC back within a few seconds.
 const SECRET_TOKEN = process.env.ZM_RTMS_SECRET_TOKEN;
+const signedByZoom = createSignatureCheck(SECRET_TOKEN);
 
 function handleUrlValidation(payload, res) {
   const plainToken = payload?.plainToken;
@@ -304,6 +349,12 @@ function handleUrlValidation(payload, res) {
 // unhealthy endpoint to Zoom.
 app.post("/", (req, res) => {
   const body = req.body;
+
+  if (!signedByZoom(req.get("x-zm-request-timestamp"), req.get("x-zm-signature"), req.rawBody)) {
+    log("Rejected a POST that isn't signed by Zoom, or is stale or replayed");
+    res.status(401).json({ error: "invalid signature" });
+    return;
+  }
 
   if (!body || typeof body.event !== "string") {
     log("Rejected a POST with no event field");
@@ -377,6 +428,7 @@ relay = createRelay(server, {
     (ALLOW_RECORDED && Boolean(newestCapture())),
   answerRequest,
   watchers: { changes, color },
+  verify: verifyHello,
 });
 
 server.listen(PORT, () => {
