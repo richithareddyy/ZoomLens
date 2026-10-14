@@ -269,32 +269,32 @@ function showNote(text) {
 
   const box = document.createElement("div");
   box.className = "alert-box";
-  const title = document.createElement("strong");
+  const msg = document.createElement("span");
+  msg.className = "msg";
   const mark = document.createElement("span");
   mark.setAttribute("aria-hidden", "true");
   mark.textContent = "⚠ ";
-  title.replaceChildren(mark, "Color Assist");
-  const body = document.createElement("span");
-  body.textContent = text;
+  const title = document.createElement("strong");
+  title.textContent = "Color Assist:";
+  msg.append(mark, title, " ", text);
 
-  const row = document.createElement("div");
-  row.className = "row";
   const explain = document.createElement("button");
   explain.type = "button";
   explain.className = "link";
-  explain.textContent = "Explain colors";
+  explain.textContent = "Explain";
+  explain.setAttribute("aria-label", "Explain colors");
   explain.addEventListener("click", () => send("colors"));
   const dismiss = document.createElement("button");
   dismiss.type = "button";
-  dismiss.className = "link quiet";
-  dismiss.textContent = "Dismiss";
+  dismiss.className = "close";
+  dismiss.textContent = "×";
+  dismiss.setAttribute("aria-label", "Dismiss Color Assist note");
   dismiss.addEventListener("click", () => {
     clearNote();
     ui.switches.find((b) => b.dataset.feature === "color").focus();
   });
-  row.append(explain, dismiss);
 
-  box.append(title, body, row);
+  box.append(msg, explain, dismiss);
   ui.alert.replaceChildren(box);
 }
 
