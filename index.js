@@ -26,10 +26,6 @@ const meetingForStream = new Map(); // streamId -> meetingUUID
 // Recent screen-share video per meeting, so a still is ready the moment someone asks.
 const frameBuffers = new Map(); // meetingUUID -> frame buffer
 
-// Each meeting's host, from Zoom's signed rtms_started event: the user who
-// started the stream, when Zoom says that user is the original host.
-const hosts = new Map(); // meetingUUID -> Zoom user ID
-
 let relay = null; // set once the HTTP server exists
 
 const CAPTURE_DIR = "captures";
@@ -86,7 +82,6 @@ function handleWebhookEvent({ event, payload }) {
   if (meetingUUID) {
     activeMeetings.set(meetingUUID, streamId);
     meetingForStream.set(streamId, meetingUUID);
-    if (payload.is_original_host && payload.operator_id) hosts.set(meetingUUID, payload.operator_id);
     relay?.notifyStreamState(meetingUUID, true);
   }
 
@@ -434,7 +429,6 @@ relay = createRelay(server, {
   answerRequest,
   watchers: { changes, color },
   verify: verifyHello,
-  isHost: (meetingUUID, userId) => hosts.get(meetingUUID) === userId,
 });
 
 server.listen(PORT, () => {

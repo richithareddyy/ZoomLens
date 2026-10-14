@@ -114,7 +114,6 @@
     }
     /* Side by side once both names fit, which saves a row in a short panel. */
     @media (min-width: 330px) { .modes { grid-template-columns: 1fr 1fr; } }
-    .modes.host { grid-template-columns: 1fr; margin-top: var(--s-2); }
     .modes h2 { grid-column: 1 / -1; margin: 0 0 2px; font-size: 0.72rem; font-weight: 600; color: var(--text-3); }
     .mode {
       display: flex; align-items: flex-start; gap: var(--s-2); width: 100%; min-height: 32px;
@@ -279,19 +278,6 @@
       <span>
         <span class="mode-name" id="color-name">Color Assist</span>
         <span class="mode-help" id="color-help">Explains anything shown only by color</span>
-      </span>
-    </button>
-  </section>
-
-  <!-- Only the meeting's host sees this, and the server checks it's them. -->
-  <section class="modes host" aria-labelledby="host-title" id="host" hidden>
-    <h2 id="host-title">Host</h2>
-    <button class="mode" type="button" role="switch" aria-checked="true" id="allow"
-            aria-labelledby="allow-name" aria-describedby="allow-help">
-      <span class="track" aria-hidden="true"></span>
-      <span>
-        <span class="mode-name" id="allow-name">Allow ZoomLens here</span>
-        <span class="mode-help" id="allow-help">Off stops it for everyone in this meeting</span>
       </span>
     </button>
   </section>

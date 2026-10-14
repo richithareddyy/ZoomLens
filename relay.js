@@ -35,10 +35,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // watchers maps a feature to the watch.js loop that serves it. verify turns a
 // hello into { meetingUUID, participantUUID }, or null if it can't be trusted.
-// isHost says whether a verified participant is the meeting's host.
-export function createRelay(httpServer, {
-  log, isStreamActive, answerRequest, watchers = {}, verify, isHost = () => false,
-}) {
+export function createRelay(httpServer, { log, isStreamActive, answerRequest, watchers = {}, verify }) {
   if (typeof verify !== "function") throw new Error("createRelay needs a verify function");
 
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
@@ -90,42 +87,6 @@ export function createRelay(httpServer, {
     if (seen.count >= DAILY_LIMIT) return false;
     seen.count += 1;
     return true;
-  }
-
-  // Meetings whose host has turned ZoomLens off. In memory, so a restart
-  // turns it back on; the host's panel shows the switch either way.
-  const blocked = new Set();
-
-  const readyFor = (session) => ({
-    type: "ready",
-    sessionId: session.id,
-    identified: session.identified,
-    streamActive: session.identified ? isStreamActive(session.meetingUUID) : false,
-    allowed: !blocked.has(session.meetingUUID),
-    host: session.identified && isHost(session.meetingUUID, session.participantUUID),
-  });
-
-  const inMeeting = (meetingUUID) =>
-    [...sessions.values()].filter((s) => s.identified && s.meetingUUID === meetingUUID);
-
-  // Everything already running for the meeting stops: requests in flight are
-  // failed, so their answers are never delivered, and the watchers end.
-  // Participants keep their own settings and turn them back on themselves.
-  function setAllowed(meetingUUID, allowed) {
-    if (allowed) blocked.delete(meetingUUID);
-    else blocked.add(meetingUUID);
-
-    for (const session of inMeeting(meetingUUID)) {
-      if (!allowed) {
-        for (const id of [...session.pending.keys()]) {
-          fail(session.id, "host_disabled", "The host turned off ZoomLens for this meeting.", id);
-        }
-        session.features.clear();
-      }
-      sendTo(session.id, readyFor(session));
-    }
-    if (!allowed) for (const feature of Object.keys(watchers)) watchers[feature].stop(meetingUUID);
-    log(`RELAY the host turned ZoomLens ${allowed ? "on" : "off"} in meeting ${String(meetingUUID).slice(0, 12)}...`);
   }
 
   const listeners = (feature, meetingUUID) =>
@@ -267,7 +228,12 @@ export function createRelay(httpServer, {
             log(`RELAY ${session.id} is unidentified, requests will be refused`);
           }
 
-          sendTo(session.id, readyFor(session));
+          sendTo(session.id, {
+            type: "ready",
+            sessionId: session.id,
+            identified: session.identified,
+            streamActive: session.identified ? isStreamActive(session.meetingUUID) : false,
+          });
           return;
         }
 
@@ -282,10 +248,6 @@ export function createRelay(httpServer, {
             fail(session.id, "not_identified",
                  "This session has no participant identity, so an answer could not be " +
                  "addressed to anyone.", id);
-            return;
-          }
-          if (blocked.has(session.meetingUUID)) {
-            fail(session.id, "host_disabled", "The host turned off ZoomLens for this meeting.", id);
             return;
           }
           if (!MODES.includes(mode)) {
@@ -358,21 +320,9 @@ export function createRelay(httpServer, {
             fail(session.id, "bad_request", `${feature} is not available on this server.`);
             return;
           }
-          if (msg.on && blocked.has(session.meetingUUID)) {
-            fail(session.id, "host_disabled", "The host turned off ZoomLens for this meeting.");
-            return;
-          }
           setFeature(session, feature, Boolean(msg.on));
           return;
         }
-
-        case "allow":
-          if (!session.identified || !isHost(session.meetingUUID, session.participantUUID)) {
-            fail(session.id, "not_host", "Only the meeting's host can turn ZoomLens on or off.");
-            return;
-          }
-          setAllowed(session.meetingUUID, Boolean(msg.on));
-          return;
 
         case "ping":
           sendTo(session.id, { type: "pong" });
@@ -409,7 +359,12 @@ export function createRelay(httpServer, {
       let told = 0;
       for (const session of sessions.values()) {
         if (!session.identified || session.meetingUUID !== meetingUUID) continue;
-        sendTo(session.id, readyFor(session));
+        sendTo(session.id, {
+          type: "ready",
+          sessionId: session.id,
+          identified: true,
+          streamActive: active,
+        });
         told++;
       }
       if (told) {

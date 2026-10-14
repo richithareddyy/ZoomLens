@@ -30,8 +30,6 @@ Both are switches in the panel, off by default and private to the participant wh
 - **Announce screen changes**, for participants who are blind or have low vision. The panel adds a short description each time the shared screen changes in a way worth mentioning, and the participant's screen reader announces it. A 64x36 greyscale fingerprint decides when the screen changed, so the model is not asked about every frame; on the two development recordings it would have been asked about one look in eight to ten.
 - **Color Assist**, for participants with a color vision deficiency. Answers name things by label, value, or position rather than color, **Explain colors** says what each color means, and a note appears when a new screen tells things apart by color alone. Colors and likely confusions are found without a model (CIELAB, CIEDE2000, and simulated protanopia, deuteranopia, and tritanopia); the model is asked only when that analysis finds colors that could be confused.
 
-The meeting's host also gets a switch that turns ZoomLens off for everyone in that meeting, and each participant's panel says so. The server identifies the host from Zoom's signed `meeting.rtms_started` event, not from the panel.
-
 Neither mode has been tried with the people it is for yet. [`docs/accessibility.md`](docs/accessibility.md) covers the design, measurements, and limitations, and [`demo/color-dashboard.html`](demo/color-dashboard.html) is a screen to share when demonstrating Color Assist.
 
 ## Run locally
@@ -74,7 +72,6 @@ node test-trust.js    # app context, tickets, and webhook signatures
 node test-change.js   # change detection on synthetic screens
 node test-colors.js   # color analysis against published values and synthetic screens
 node test-watch.js    # both modes reach only the participants who turned them on
-node test-host.js     # only the host can turn ZoomLens off, and it stops everything in that meeting
 ```
 
 The remaining checks need external inputs:

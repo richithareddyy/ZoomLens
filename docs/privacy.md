@@ -85,17 +85,6 @@ the session is marked unidentified and every request is refused with
 `not_identified`. An answer that cannot be addressed to a specific person
 should not be produced at all.
 
-**The host can turn it off, and everyone is told.** The meeting's host gets a
-switch that turns ZoomLens off for everyone in the meeting. The server knows who
-the host is from Zoom's signed `meeting.rtms_started` event (the user who
-started the stream, when Zoom says they are the original host), matched against
-the verified Zoom user of each panel, so the switch can't be claimed by a
-modified panel. Turning it off refuses new requests, drops answers still being
-prepared, and stops change and color checks; every participant's panel says
-the host turned it off (`setAllowed` in `relay.js`, `test-host.js`). The setting
-is kept in memory, so a server restart turns ZoomLens back on, and a co-host or
-anyone who isn't the original host doesn't get the switch.
-
 **Webhooks are only acted on when Zoom signed them.** Every request to the
 webhook route, the URL validation challenge included, must carry Zoom's
 `x-zm-signature` over its exact body, be less than five minutes old, and not
@@ -177,8 +166,8 @@ project uses the application.
    from the presenter, the meeting host, or neither?
 3. Does this require institutional review at all, given that it processes
    content belonging to people who are not the user of the application?
-4. The host can now turn ZoomLens off for a meeting, and participants are
-   told when they do. Should it be off by default until the host allows it?
+4. Should there be a way for a host to disable the application for a meeting,
+   and if so, should participants be told it has been disabled?
 
 Questions 1 and 2 are the ones that determine whether the design stands as it
 is. The rest follow from them.
