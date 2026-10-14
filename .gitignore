@@ -50,6 +50,7 @@ lib/linux-x64/*
 !test-colors.js
 !trust.js
 !test-trust.js
+!test-host.js
 !public/*.js
 !site/*.js
 
