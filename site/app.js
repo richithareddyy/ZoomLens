@@ -111,6 +111,14 @@ const sheetIntents = {
 const sheetKeywords = { "enterprise": "ent", "mid-market|mid market|midmarket|mid": "mid", "self-serve|self serve|self": "self",
   "expense|opex|cost": "opex", "q3|third quarter": "q3", "change": "change" };
 
+// Gains and losses are signed, but whether each is good or bad news is only
+// in the color: rising expenses are red.
+const SHEET_COLORS = {
+  // No highlight: it would paint over the very colors being explained.
+  note: "The Change column marks good and bad news with color alone.",
+  a: "The [[Change column|change]] uses green for good news and red for bad. [[Enterprise|ent change]] and [[mid-market|mid change]] are green for growing. [[Self-serve|self change]] is red for shrinking, and [[expenses|opex change]] are red for rising. The signs show which way each moved; only the color says whether that's good.",
+};
+
 // --- The paper ----------------------------------------------------------------
 
 const FIG = { sizes: ["1k", "10k", "100k", "1M"], base: [30, 46, 55, 61], rag: [34, 58, 78, 92] };
@@ -172,12 +180,13 @@ const SCENES = {
     { status: "Last edited 2 days ago", where: "the Q3 revenue sheet",
       contents: "revenue for three customer segments over three quarters, with expenses underneath",
       html: () => sheetHTML(false), primary: "change", spots: sheetSpots, intents: sheetIntents, keywords: sheetKeywords,
+      colors: SHEET_COLORS,
       suggest: ["Which number matters most?", "What about expenses?", "Summarize this"] },
     { status: "Edited just now", where: "the Q3 revenue sheet, now with a Q4 forecast",
       contents: "revenue for three segments over three quarters, a Q4 forecast, and expenses",
       change: "added a [[Q4 forecast column|q4]] to the sheet. [[Enterprise is forecast at 540k|ent q4]], and revenue overall at about 1,016k, up 6% on Q3",
       changed: "q4", focus: "q4",
-      html: () => sheetHTML(true), primary: "q4",
+      html: () => sheetHTML(true), primary: "q4", colors: SHEET_COLORS,
       spots: { ...sheetSpots,
         q4: { label: "Q4 forecast column", q: "What's the Q4 forecast?",
           a: "MK's forecast has revenue reaching about 1,016k in Q4, up 6% on Q3. [[Enterprise is forecast at 540k|ent q4]], still the main source of growth, and [[self-serve keeps shrinking, to 158k|self q4]].",
@@ -201,6 +210,8 @@ const SCENES = {
         ${figureHTML()}
         <p ${trig("fig", "Figure 3", "paper-cap")}>Figure 3. Accuracy against training set size. Lighter bars: baseline.</p>`,
       primary: "fig",
+      colors: { spot: "fig",
+        a: "[[Figure 3|fig]] tells its bars apart by shade, and the caption says which is which: in each pair the lighter bar is the baseline and the darker one is the retrieval-augmented method. The darker bar is taller in every pair." },
       spots: {
         fig: { label: "Figure 3", q: "What does this figure show?",
           a: "Figure 3 plots accuracy against training set size. In each pair, the lighter bar is the baseline and the darker one is the retrieval-augmented method. The gap is [[small at first|p1]] and [[widest at the largest size|p4]].",
@@ -254,6 +265,8 @@ const SCENES = {
     { status: "Updated Monday 9:00", where: "the funnel dashboard",
       contents: "eight weeks of visits and conversion, and the share of mobile traffic",
       html: () => dashHTML(false), primary: "conv",
+      colors: { note: "The trend chart tells its two lines apart only by color.", spot: "chart",
+        a: "The chart has two lines and no legend. The one that [[holds for three weeks|early]] and then [[falls steadily|late]] is conversion (blue). The flatter line near the top is visits (grey)." },
       spots: {
         conv: { label: "Conversion", q: "Why did conversion drop?",
           a: "Conversion has [[fallen for about five weeks|late]] while visits stayed level, so fewer visitors are buying rather than fewer arriving. With [[mobile at 64% of traffic|mobile]], the mobile experience is the first place to look.",
@@ -278,6 +291,8 @@ const SCENES = {
       change: "refreshed the dashboard with [[week 9|w9]]. [[Conversion fell again, to 1.9%|conv]], and [[mobile share rose to 66%|mobile]]",
       changed: "conv, mobile, w9", focus: "conv",
       html: () => dashHTML(true), primary: "conv",
+      colors: { note: "The trend chart tells its two lines apart only by color.", spot: "chart",
+        a: "The chart has two lines and no legend. The one that [[holds for three weeks|early]] and then falls to its lowest at [[week 9|w9]] is conversion (blue). The flatter line near the top is visits (grey)." },
       spots: {
         conv: { label: "Conversion", q: "Why did conversion drop?",
           a: "Conversion is down to 1.9% after [[week 9|w9]], the sixth week of decline while visits held steady. With [[mobile now 66% of traffic|mobile]], the mobile experience is still the first place to look.",
@@ -301,6 +316,8 @@ const SCENES = {
   slides: { frames: [
     { title: "Deployment options", primary: "title", where: "slide 1, deployment options",
       contents: "three deployment options, with managed highlighted",
+      colors: { note: "This slide marks the recommended option with color alone.", spot: "managed",
+        a: "The highlighted box is [[Managed|managed]] (blue), the option MK is recommending. Self-hosted and hybrid aren't highlighted, and nothing else on the slide says which is recommended." },
       html: () => `
         <div ${trig("title", "the slide title", "slide-title")}><h4>Deployment options</h4></div>
         <p class="sub ctx">Comparing three approaches</p>
@@ -327,6 +344,8 @@ const SCENES = {
       suggest: ["What's the main point?", "What's the tradeoff?", "Summarize this slide"] },
     { title: "Cost comparison", primary: "title", where: "slide 2, cost comparison",
       contents: "the annual running cost of each deployment option",
+      colors: { spot: "cman",
+        a: "[[Managed's bar|cman]] is highlighted (blue) to mark the cheapest option. The figures say the same thing, 28k against 35k and 42k, so nothing here relies on color alone." },
       change: "moved to slide 2, a cost comparison: [[managed is cheapest at 28k a year|cman]]",
       changed: "cman", focus: "cman",
       html: () => `
@@ -589,6 +608,7 @@ function renderScreen() {
   // authored here, never user input
   screenEl.innerHTML = `<div class="screen-inner">${statusBar()}${view().html()}</div>`;
   markNew();
+  colorNote();
   fitScreen();
   if (state.scene === "slides") placeCursor();
   setHint(null);
@@ -780,7 +800,6 @@ function ask(question, result, { instant = false, thinking } = {}) {
     threadEl.appendChild(a);
     if (!result.offscreen && (result.ctx || result.spot)) state.lastSpot = result.ctx || result.spot;
     setPill("ok", "Ready");
-    actionsEl.classList.add("compact");
     input.placeholder = "Ask a follow-up…";
     reveal(q || a);
   };
@@ -907,15 +926,104 @@ tabs.forEach((tab, i) => {
   });
 });
 
-// The real panel's two shortcuts, answered from this scene's example set.
-actionsEl.querySelectorAll(".zl-action").forEach((btn) => {
+// The panel's shortcuts, answered from this scene's example set.
+actionsEl.querySelectorAll("[data-mode]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const explain = btn.dataset.mode === "explain";
-    const hit = fromIntent(explain ? "explain" : "summary") || fromSpot(view().primary);
     openLens();
-    ask(null, hit, { thinking: explain ? "Analyzing what's being shown…" : "Understanding shared screen…" });
+    const mode = btn.dataset.mode;
+    if (mode === "changed") return ask(null, catchUp());
+    if (mode === "colors") return explainColors();
+    const explain = mode === "explain";
+    const hit = fromIntent(explain ? "explain" : "summary") || fromSpot(view().primary);
+    ask(null, hit, { thinking: explain ? "Working out what this shows…" : "Reading the shared screen…" });
   });
 });
+
+// --- Accessibility modes, as in the panel ------------------------------------------
+
+const modes = { changes: false, color: false };
+const colorsBtn = $("#zl-colors");
+const alertEl = $("#zl-alert");
+
+document.querySelectorAll(".zl-mode").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const f = btn.dataset.feature;
+    modes[f] = !modes[f];
+    btn.setAttribute("aria-checked", String(modes[f]));
+    if (f === "color") {
+      colorsBtn.hidden = !modes.color;
+      colorNote();
+    }
+  });
+});
+
+function explainColors() {
+  const c = view().colors;
+  ask(null, c
+    ? { spot: c.spot ?? null, label: "colors on screen", a: c.a }
+    : { spot: null, label: "colors on screen", a: `Nothing on ${view().where} relies on color alone.` },
+    { thinking: "Reading the colors on screen…" });
+  alertEl.replaceChildren();
+}
+
+// One note at a time, only for screens that tell things apart by color alone,
+// and never the same note twice in a row.
+function colorNote() {
+  const note = modes.color ? view().colors?.note : null;
+  if (!note) {
+    alertEl.replaceChildren();
+    delete alertEl.dataset.note;
+    return;
+  }
+  if (alertEl.dataset.note === note) return;
+  alertEl.dataset.note = note;
+
+  const box = document.createElement("div");
+  box.className = "zl-alert-box";
+  const msg = document.createElement("span");
+  msg.className = "msg";
+  const mark = document.createElement("span");
+  mark.setAttribute("aria-hidden", "true");
+  mark.textContent = "⚠ ";
+  const title = document.createElement("strong");
+  title.textContent = "Color Assist:";
+  msg.append(mark, title, " ", note);
+
+  const go = document.createElement("button");
+  go.type = "button";
+  go.className = "go";
+  go.textContent = "Explain";
+  go.setAttribute("aria-label", "Explain colors");
+  go.addEventListener("click", () => { openLens(); explainColors(); });
+  const x = document.createElement("button");
+  x.type = "button";
+  x.className = "x";
+  x.textContent = "×";
+  x.setAttribute("aria-label", "Dismiss Color Assist note");
+  x.addEventListener("click", () => alertEl.replaceChildren());
+
+  box.append(msg, go, x);
+  alertEl.replaceChildren(box);
+}
+
+// With Announce changes on, each change is described as it happens, so there
+// is nothing left to catch up on.
+function announceChange() {
+  const t = turn("update");
+  const label = document.createElement("div");
+  label.className = "zl-label";
+  label.textContent = "Screen changed";
+  const body = document.createElement("div");
+  body.className = "zl-body";
+  richText(body, `MK ${view().change}.`);
+  t.append(label, body);
+  threadEl.querySelector(".zl-empty")?.remove();
+  clearNotice();
+  threadEl.appendChild(t);
+  trimThread();
+  state.lastSeen = state.frame;
+  threadEl.scrollTop = threadEl.scrollHeight;
+}
 
 // --- Selecting part of the screen ----------------------------------------------
 
@@ -1121,7 +1229,8 @@ function advanceFrame() {
   }
   setPill("info", "Screen changed");
   setTimeout(() => { if (stateEl.dataset.kind === "info") setPill("ok", "Ready"); }, 2600);
-  showNotice();
+  if (modes.changes) announceChange();
+  else showNotice();
   updateAwayBtn();
 }
 
@@ -1169,8 +1278,9 @@ function lookAway() {
     meeting.classList.remove("away");
     updateAwayBtn();
     const n = state.frame - state.lastSeen;
-    awayStatus.textContent =
-      `You're back. The screen changed ${n === 1 ? "once" : `${n} times`}. Ask ZoomLens what you missed.`;
+    awayStatus.textContent = modes.changes
+      ? "You're back. ZoomLens described each change as it happened."
+      : `You're back. The screen changed ${n === 1 ? "once" : `${n} times`}. Ask ZoomLens what you missed.`;
     startPresenter();
   }, AWAY_MS + 20);
 }
@@ -1376,6 +1486,31 @@ engTabs.forEach((t, i) => {
     selectEng((i + step + engTabs.length) % engTabs.length, true);
   });
 });
+
+// 4. Color Assist: one status column through simulated color vision. The
+// colors and differences are colors.js run on these exact colors.
+(() => {
+  const root = $('[data-sim="colors"]');
+  if (!root) return;
+  const SEEN = {
+    normal: { red: "#d64545", amber: "#e6a23c", green: "#3a9d5d" },
+    deuteranopia: { red: "#918441", amber: "#cab63f", green: "#908761" },
+    protanopia: { red: "#6d6544", amber: "#baa62e", green: "#9d9059" },
+    tritanopia: { red: "#eb1c47", amber: "#fa908d", green: "#159b8d" },
+  };
+  const SAYS = {
+    normal: "Red, amber and green, clearly different: red and green are 65.2 apart. No note.",
+    deuteranopia: "Red and green are now only 6.9 apart, under the threshold of 10, so Color Assist adds a note and offers to explain the colors.",
+    protanopia: "The colors move closer, but every pair stays 11.6 or more apart, so there's no note.",
+    tritanopia: "The colors shift, but every pair stays 20.4 or more apart, so there's no note.",
+  };
+  const out = root.querySelector(".sim-result");
+  const show = (vision) => {
+    root.querySelectorAll("[data-c]").forEach((dot) => { dot.style.background = SEEN[vision][dot.dataset.c]; });
+    out.textContent = SAYS[vision];
+  };
+  show(simSwitch(root, "vision", show)());
+})();
 
 // A two-option switch inside a simulation.
 function simSwitch(root, attr, onChange) {

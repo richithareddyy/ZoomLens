@@ -24,6 +24,7 @@
       <nav aria-label="Primary">
         <ul class="nav-links">
           <li><a href="#how">How it works</a></li>
+          <li><a href="#accessibility">Accessibility</a></li>
           <li><a href="#private">Privacy</a></li>
           <li><a href="#engineering">Engineering</a></li>
           <li><a href="#faq">FAQ</a></li>
@@ -104,10 +105,7 @@
 
               <aside class="lens-panel zl" id="lens-panel" aria-label="ZoomLens">
                 <div class="zl-head">
-                  <div class="zl-id">
-                    <h3 class="zl-title" id="lp-logo"><span class="glyph glyph-panel" aria-hidden="true"></span>ZoomLens</h3>
-                    <p class="zl-sub">Understand what's being shared.</p>
-                  </div>
+                  <h3 class="zl-title" id="lp-logo"><span class="glyph glyph-panel" aria-hidden="true"></span>ZoomLens</h3>
                   <div class="zl-head-right">
                     <span class="zl-pill" id="lp-state" data-kind="ok" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="lp-state-text">Ready</span></span>
                     <button type="button" class="lp-close" id="lp-close" aria-label="Close ZoomLens" data-tip="Close ZoomLens">
@@ -116,9 +114,19 @@
                   </div>
                 </div>
                 <div class="zl-actions" id="zl-actions">
-                  <button type="button" class="zl-action" data-mode="describe">Describe screen<small>Summarize what I'm looking at</small></button>
-                  <button type="button" class="zl-action" data-mode="explain">Explain this<small>Help me understand what's being shown</small></button>
+                  <button type="button" class="zl-primary" data-mode="describe">Describe screen</button>
+                  <div class="zl-more">
+                    <button type="button" class="zl-secondary" data-mode="explain">Explain</button>
+                    <button type="button" class="zl-secondary" data-mode="changed">What changed?</button>
+                    <button type="button" class="zl-secondary" data-mode="colors" id="zl-colors" hidden>Explain colors</button>
+                  </div>
                 </div>
+                <div class="zl-modes" role="group" aria-labelledby="zl-modes-title">
+                  <p class="zl-modes-title" id="zl-modes-title">Accessibility</p>
+                  <button type="button" class="zl-mode" role="switch" aria-checked="false" data-feature="changes"><span class="zl-track" aria-hidden="true"></span>Announce changes</button>
+                  <button type="button" class="zl-mode" role="switch" aria-checked="false" data-feature="color"><span class="zl-track" aria-hidden="true"></span>Color Assist</button>
+                </div>
+                <div class="zl-alert" id="zl-alert" role="status"></div>
                 <div class="zl-thread" id="thread" role="log" aria-live="polite" aria-label="Answers"></div>
                 <form class="zl-composer" id="ask-form" autocomplete="off">
                   <div class="zl-field">
@@ -126,9 +134,8 @@
                     <input id="ask" type="text" maxlength="140" placeholder="Ask about the shared screen…">
                     <button type="submit" aria-label="Send question">↑</button>
                   </div>
-                  <p class="zl-hint">Only you see your answers.</p>
+                  <p class="zl-hint">Only you see these answers.</p>
                 </form>
-                <p class="zl-diag" aria-hidden="true">› Connection details</p>
               </aside>
             </div>
 
@@ -154,8 +161,9 @@
               <div>
                 <h4>In ZoomLens today</h4>
                 <ul>
-                  <li>Describe screen and Explain this</li>
+                  <li>Describe screen, Explain, and What changed?</li>
                   <li>Typed questions, and follow-ups that build on the last answer</li>
+                  <li>Announce changes and Color Assist</li>
                   <li>Answers only you see, without the presenter being told</li>
                 </ul>
               </div>
@@ -165,11 +173,11 @@
                   <li>Selecting part of the screen, or drawing a box around it</li>
                   <li>Answers that link back to the screen</li>
                   <li>Suggested questions</li>
-                  <li>Noticing screen changes and catching you up</li>
+                  <li>A notice when the screen changes; the panel describes the change instead when Announce changes is on</li>
                 </ul>
               </div>
             </div>
-            <p>ZoomLens reads the screen at the moment you ask and does not track how it changes over time. Catching you up would mean keeping recent screens, which raises privacy questions that would need answers first.</p>
+            <p>ZoomLens only watches for changes while Announce changes or Color Assist is on. To notice a change it keeps a 64 by 36 grey thumbnail of the last screen it described, not a recording.</p>
           </details>
         </div>
       </div>
@@ -187,6 +195,25 @@
       </div>
     </section>
 
+    <!-- ACCESSIBILITY ==================================================== -->
+    <section class="access" id="accessibility">
+      <div class="wrap">
+        <p class="eyebrow">Accessibility</p>
+        <h2>For when seeing the screen isn't enough.</h2>
+        <div class="access-grid">
+          <div>
+            <h3>Blind and low vision</h3>
+            <p>Turn on <b>Announce changes</b> and ZoomLens describes the shared screen each time it changes in a way worth mentioning, read out by your own screen reader. <b>What changed?</b> says only what is new since your last answer, and descriptions include what the presenter's pointer is on.</p>
+          </div>
+          <div>
+            <h3>Color blindness</h3>
+            <p>Turn on <b>Color Assist</b> and answers name things by label, value or position instead of color. <b>Explain colors</b> says what each color means, and a short note appears when a screen shows something by color alone.</p>
+          </div>
+        </div>
+        <p class="access-foot">Try both in the demo above: Color Assist on the Spreadsheet or Dashboard, Announce changes on the Presentation. Both modes are new and haven't yet been tested with blind or color-blind users.</p>
+      </div>
+    </section>
+
     <!-- PRIVACY ========================================================== -->
     <section class="private" id="private">
       <div class="wrap">
@@ -198,12 +225,14 @@
             <ul>
               <li><strong>Answers go to the person who asked.</strong> The server addresses each answer to one session.</li>
               <li><strong>Others never see it.</strong> Your questions and answers do not appear in the meeting, for other participants or the presenter.</li>
+              <li><strong>Who's asking is checked with Zoom.</strong> The server confirms each panel from Zoom's encrypted app context, so a panel can't claim to be someone else.</li>
+              <li><strong>Your questions aren't logged.</strong> The server records that a question was asked, not what it said.</li>
             </ul>
           </div>
         </div>
         <details class="more">
           <summary>How the routing is enforced</summary>
-          <p>Every connection is bound to one participant when it opens. A single function is the only way a message leaves the server, and it takes a session, not a socket, so there is no broadcast. A reply is refused unless that session made the request. Seven automated cases run against the real server, including ten participants asking at once, and the protection was deliberately broken to confirm the tests catch it. Participant identity comes from the panel and is not yet independently verified.</p>
+          <p>Every connection is bound to one participant when it opens. A single function is the only way a message leaves the server, and it takes a session, not a socket, so there is no broadcast. A reply is refused unless that session made the request. Seven automated cases run against the real server, including ten participants asking at once, and the protection was deliberately broken to confirm the tests catch it. Who each connection belongs to comes from Zoom's encrypted app context, checked on the server, never from what the panel says about itself.</p>
           <p class="more-docs">Full data handling: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/docs/privacy.md">docs/privacy.md</a></p>
         </details>
       </div>
@@ -238,6 +267,7 @@
             <button type="button" role="tab" class="eng-tab" id="eng-tab-stream" aria-controls="eng-stream" aria-selected="true"><span class="n">01</span>Screen capture and H.264 decoding</button>
             <button type="button" role="tab" class="eng-tab" id="eng-tab-routing" aria-controls="eng-routing" aria-selected="false" tabindex="-1"><span class="n">02</span>Answers routed to one session</button>
             <button type="button" role="tab" class="eng-tab" id="eng-tab-sources" aria-controls="eng-sources" aria-selected="false" tabindex="-1"><span class="n">03</span>Fallback screen sources</button>
+            <button type="button" role="tab" class="eng-tab" id="eng-tab-access" aria-controls="eng-access" aria-selected="false" tabindex="-1"><span class="n">04</span>Change detection and color analysis</button>
           </div>
           <div class="eng-panels">
           <div class="eng-panel" role="tabpanel" id="eng-stream" aria-labelledby="eng-tab-stream">
@@ -265,7 +295,7 @@
           </div>
           <div class="eng-panel" role="tabpanel" id="eng-routing" aria-labelledby="eng-tab-routing" hidden>
             <h3>Answers routed to one session</h3>
-            <dl class="eng-sum"><dt>Problem</dt><dd>Every participant runs their own copy of the panel, so anything it enforces can be changed by whoever runs it.</dd><dt>Solution</dt><dd>Each connection is bound to one participant. The only way a message leaves the server is addressed to one session, and replies must match that session&#39;s request.</dd><dt>Why it matters</dt><dd>A modified panel cannot receive someone else&#39;s answer. Seven automated cases check it.</dd></dl>
+            <dl class="eng-sum"><dt>Problem</dt><dd>Every participant runs their own copy of the panel, so anything it enforces can be changed by whoever runs it.</dd><dt>Solution</dt><dd>Each connection is bound to one participant. The only way a message leaves the server is addressed to one session, and replies must match that session&#39;s request.</dd><dt>Why it matters</dt><dd>A modified panel can&#39;t receive someone else&#39;s answer or claim to be someone else. Automated tests check both.</dd></dl>
             <div class="sim sim-privacy" data-sim="privacy">
               <div class="route">
                 <div class="who" data-who="you"><b>You</b><span data-got>Nothing yet</span></div>
@@ -309,6 +339,31 @@
               <p class="more-docs">Source: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/screen.js">screen.js</a>, <a href="https://github.com/richithareddyy/ZoomLens/blob/main/index.js">index.js</a>. Hosting: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/docs/deploy.md">docs/deploy.md</a></p>
             </details>
           </div>
+          <div class="eng-panel" role="tabpanel" id="eng-access" aria-labelledby="eng-tab-access" hidden>
+            <h3>Change detection and color analysis</h3>
+            <dl class="eng-sum"><dt>Problem</dt><dd>Describing every frame would mean a paid model call every few seconds, and a note about colors only helps when colors could really be confused.</dd><dt>Solution</dt><dd>A 64 by 36 grey thumbnail decides when the screen has changed. For Color Assist, the server finds the colors on screen, simulates three kinds of color blindness, and measures how far apart each pair still looks. Only then is the model asked.</dd><dt>Why it matters</dt><dd>On two recorded screen shares the model would be asked about one look in eight to ten, and Color Assist passed none of those changes to the model, because none relied on color.</dd></dl>
+            <div class="sim sim-colors" data-sim="colors">
+              <div class="sim-bar">
+                <div class="sim-seg" role="radiogroup" aria-label="Color vision">
+                  <button type="button" role="radio" aria-checked="true" data-vision="normal">Typical</button>
+                  <button type="button" role="radio" aria-checked="false" data-vision="deuteranopia">Deuteranopia</button>
+                  <button type="button" role="radio" aria-checked="false" data-vision="protanopia">Protanopia</button>
+                  <button type="button" role="radio" aria-checked="false" data-vision="tritanopia">Tritanopia</button>
+                </div>
+              </div>
+              <ul class="status-rows" aria-label="Status column of a project dashboard">
+                <li><span>API Migration</span><i data-c="amber" aria-hidden="true"></i></li>
+                <li><span>Database Upgrade</span><i data-c="green" aria-hidden="true"></i></li>
+                <li><span>Authentication Rewrite</span><i data-c="red" aria-hidden="true"></i></li>
+              </ul>
+              <p class="sim-result" role="status" aria-live="polite"></p>
+            </div>
+            <details class="more">
+              <summary>More detail</summary>
+              <dl class="eng-text"><dt>Problem</dt><dd>A screen counts as changed when something a viewer would notice moved, not when a cursor drifts or the video recompresses. And many screens use several colors without relying on them.</dd> <dt>Implementation</dt><dd>Each look shrinks the screen to 64 by 36 in grey and compares it with the last screen described: a moving pointer touches about 2 of 2,304 cells, one added bullet about 40. A change must hold still for one more look before it counts. For color, strongly colored pixels are grouped by hue, each color is passed through the Machado, Oliveira and Fernandes simulation of protanopia, deuteranopia and tritanopia, and pairs are compared with CIEDE2000, which matches the published test values. A pair that is clearly different normally but under 10 apart when simulated is flagged.</dd> <dt>Tradeoff</dt><dd>The simulation models full color blindness, which most people don't have, and it isn't a medical measure. Window buttons and tab icons are colored too, so a note needs more than a few small marks of each color.</dd></dl>
+              <p class="more-docs">Source: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/change.js">change.js</a>, <a href="https://github.com/richithareddyy/ZoomLens/blob/main/colors.js">colors.js</a>, <a href="https://github.com/richithareddyy/ZoomLens/blob/main/watch.js">watch.js</a>. Measurements: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/docs/accessibility.md">docs/accessibility.md</a></p>
+            </details>
+          </div>
             <p class="note">The panels run small simulations of each mechanism in your browser.</p>
           </div>
         </div>
@@ -333,11 +388,19 @@
           </details>
           <details>
             <summary>What gets sent to the AI model?</summary>
-            <p>One still image of the shared screen and your question. They go to a third-party vision model to be answered, and the image is not filtered first.</p>
+            <p>One still image of the shared screen and your question. They go to a third-party vision model to be answered, and the image is not filtered first. With Announce changes or Color Assist on, a still is also sent when the screen changes in a way worth describing, at most once every 10 seconds; for Color Assist, only when its own analysis finds colors that could be confused.</p>
           </details>
           <details>
             <summary>Is the meeting recorded?</summary>
-            <p>Recent screen video is kept in memory so an image is ready when you ask. During development, video from the meeting stream is also saved to a file on the developer's machine. That has to change before wider use, and the privacy notes in the repository say so.</p>
+            <p>No. Recent screen video is kept in memory so an image is ready when you ask. Nothing is saved to disk unless a developer turns that on for testing.</p>
+          </details>
+          <details>
+            <summary>Does it work with a screen reader?</summary>
+            <p>Yes. Answers appear in a region screen readers announce as they arrive, the accessibility options are real switches, and every control works from the keyboard. With Announce changes on, you hear about a new slide without having to ask.</p>
+          </details>
+          <details>
+            <summary>Can it help if I'm color blind?</summary>
+            <p>That's what Color Assist is for. It names things by label instead of color and explains what each color means. The server works out which colors could be confused before asking the model, using simulated color blindness and a standard measure of color difference.</p>
           </details>
           <details>
             <summary>Is there a limit on questions?</summary>
