@@ -205,16 +205,7 @@ button.ctl:hover { background: #2E323B; }
 .slide div b { display: block; font-size: 0.78rem; margin-bottom: 4px; }
 .slide div.pick { border-color: var(--blue); background: var(--blue-wash); }
 
-/* Architecture --------------------------------------------------------- */
-.flow { display: flex; align-items: center; gap: 0; margin-top: 40px; overflow-x: auto; padding-bottom: 8px; }
-.node { flex: 1 1 0; min-width: 160px; border: 1px solid var(--line); border-radius: var(--r-win); background: #fff; box-shadow: var(--shadow); overflow: hidden; }
-.node-bar { background: var(--bg-2); border-bottom: 1px solid var(--line); padding: 7px 11px; font-size: 0.78rem; font-weight: 600; }
-.node-body { padding: 12px; font-size: 0.82rem; color: var(--text-2); min-height: 96px; }
-.node code { font: 0.74rem var(--mono); color: var(--text); background: var(--bg-2); padding: 1px 5px; border-radius: 4px; }
-.node.accent { border-color: var(--blue); }
-.node.accent .node-bar { background: var(--blue-wash); color: var(--blue-ink); }
-.link { flex: 0 0 26px; height: 2px; background: var(--blue); position: relative; }
-.link::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left: 6px solid var(--blue); border-right: 0; }
+/* Engineering ------------------------------------------------------------ */
 .arch-foot { margin: 28px 0 0; color: var(--text-2); font-size: 0.94rem; }
 
 /* Footer --------------------------------------------------------------- */
@@ -244,7 +235,7 @@ button.ctl:hover { background: #2E323B; }
 .screen td, .screen th, .screen .ctx, .screen .spot { transition: opacity .25s, background .2s; }
 
 /* While ZoomLens is answering about a region: light it, quiet the rest */
-.screen.focusing :is(td, th, .ctx, .spot, .pair):not(.lit) { opacity: .34; }
+.screen.focusing :is(td, th, .ctx, .spot, .pair):not(.lit) { opacity: .45; }
 .screen .lit { background: var(--blue-wash); }
 .screen .spot.lit, .screen .block.lit { box-shadow: 0 0 0 2px var(--blue); }
 .screen td.lit, .screen th.lit { box-shadow: inset 0 2px 0 var(--blue), inset 0 -2px 0 var(--blue); color: var(--blue-ink); font-weight: 600; }
@@ -376,30 +367,6 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 }
 .meeting.focus-mode .screen { box-shadow: 0 0 0 2px var(--blue), 0 0 0 7px rgba(45,140,255,.18); transition: box-shadow .4s; }
 
-/* The panel slides in from zero width. Its contents keep a real width while
-   hidden, so they never wrap a letter at a time and stretch the picture. */
-
-   /* never sets the picture's height, at any step */
-
-[data-step="ask"] { background: var(--blue-wash); box-shadow: 0 0 0 2px var(--blue); }
-
-/* Architecture: the path lights up to whatever you point at --------------- */
-.node { cursor: pointer; transition: border-color .2s, box-shadow .2s, opacity .2s; }
-.node:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
-.flow.tracing .node:not(.lit) { opacity: .45; }
-.node.lit { border-color: var(--blue); }
-.node.current { box-shadow: 0 0 0 3px rgba(45,140,255,.18), var(--shadow); }
-.link { transition: background .2s; }
-.flow.tracing .link:not(.lit) { background: var(--line); }
-.flow.tracing .link:not(.lit)::after { border-left-color: var(--line); }
-.flow-explain {
-  margin-top: 20px; padding: 16px 18px;
-  background: var(--blue-wash); border: 1px solid #CFE0FF; border-left: 3px solid var(--blue);
-  border-radius: var(--r-win); min-height: 92px;
-}
-.fe-label { display: block; font: 600 0.72rem var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--blue-ink); margin-bottom: 4px; }
-.flow-explain p { margin: 0; color: var(--text); font-size: 0.96rem; }
-
 /* Reveal on scroll: opacity only, never position-locked scrolling ------- */
 .rise { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
 .rise.in { opacity: 1; transform: none; }
@@ -407,10 +374,6 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* Responsive ----------------------------------------------------------- */
 @media (max-width: 960px) {
   .hero-grid { grid-template-columns: 1fr; }
-
-  .flow { flex-direction: column; align-items: stretch; }
-  .link { flex: 0 0 22px; width: 2px; height: 22px; align-self: center; }
-  .link::after { right: -4px; top: auto; bottom: -1px; border: 5px solid transparent; border-top: 6px solid var(--blue); border-bottom: 0; }
 }
 
 @media (max-width: 760px) {
@@ -428,10 +391,6 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 }
 
 /* Playground on small screens ---------------------------------------------- */
-@media (max-width: 960px) {
-
-  .flow.tracing .node:not(.lit) { opacity: .6; }
-}
 @media (max-width: 760px) {
   .m-body { min-height: 0; }
 
@@ -674,6 +633,26 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
    First impression: what it is, then what using it looks like
 =========================================================================== */
 .demo-top { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 12px; }
+/* Lands below the sticky nav, so the screen tabs stay in view. */
+#demo { scroll-margin-top: 76px; }
+
+/* A first visit's path through the demo; each step ticks off when done. */
+.try-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 0; }
+.try-steps button {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 5px 14px 5px 5px;
+  font: 600 0.86rem var(--font); color: var(--text); background: var(--bg);
+  border: 1px solid var(--line-ui); border-radius: 999px; cursor: pointer; transition: border-color .2s, background .2s, color .2s;
+}
+.try-steps button:hover { border-color: var(--blue-ink); background: var(--blue-wash); }
+.try-steps button:focus-visible { outline: 2px solid var(--blue-ink); outline-offset: 2px; }
+.try-steps .n { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; font-size: 0.78rem; font-weight: 700; color: var(--blue-ink); background: var(--blue-wash); }
+.try-steps .done button { color: var(--text-2); border-color: var(--line); }
+.try-steps .done .n { font-size: 0; color: #fff; background: #2E7D32; }
+.try-steps .done .n::before { content: "✓"; font-size: 0.8rem; }
+@media (max-width: 760px) {
+  .try-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .try-steps button { width: 100%; height: 100%; padding: 6px 10px 6px 6px; border-radius: 12px; font-size: 0.8rem; text-align: left; }
+}
 .demo-top .tabs { margin-bottom: 0; }
 .demo-flag {
   margin-left: auto; font-size: 0.74rem; font-weight: 600; color: var(--text-2);
@@ -778,9 +757,7 @@ details.more p { margin: 10px 0 0; max-width: 760px; color: var(--text-2); font-
 details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
 .more-docs { font-size: 0.86rem !important; }
 
-/* Engineering: the pipeline, then three highlights */
-.engineering .flow { margin-top: 8px; }
-.engineering .flow-explain { margin-bottom: 28px; }
+/* Engineering: three problems, each with a demo */
 .eng-sum { margin: 0 0 16px; display: grid; grid-template-columns: 112px 1fr; gap: 8px 16px; }
 .eng-sum dt { font: 600 0.72rem var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--blue-ink); padding-top: 3px; }
 .eng-sum dd { margin: 0; font-size: 0.95rem; }
@@ -862,25 +839,15 @@ details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
 .sim-log li.refused::before { background: #F04438; }
 .sim-log li:first-child { color: var(--text); }
 
-/* 3. sources */
+/* 3. colors */
 .status-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .status-rows li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; font-size: 0.86rem; }
 .status-rows i { flex: none; width: 16px; height: 16px; border-radius: 50%; transition: background .3s; }
 .sim-colors .sim-seg { flex-wrap: wrap; }
-.sources { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.sources li { background: #fff; border: 1px solid var(--line); border-radius: 8px; transition: border-color .2s, background .2s; }
-.sources label { display: grid; grid-template-columns: auto auto 1fr; gap: 4px 10px; align-items: baseline; padding: 10px 12px; cursor: pointer; font-size: 0.86rem; }
-.sources input { accent-color: var(--blue-ink); }
-.sources span { color: var(--text-2); font-size: 0.8rem; }
-.sources li.used { border-color: var(--blue); background: var(--blue-wash); }
-.src-out { display: grid; gap: 2px; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: 8px; }
-.src-k { font: 600 0.68rem var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--blue-ink); }
-.src-out b { font-size: 1rem; }
-.src-label { font-size: 0.84rem; color: var(--text-2); }
 
-/* 4. limits */
-
-/* 5. self */
+/* 1. video: what each letter in the demo means */
+.units-key { margin: -6px 0 0; font-size: 0.8rem; color: var(--text-2); }
+.units-key b { font-family: var(--mono); color: var(--text); }
 
 @media (max-width: 960px) {
   .eng { grid-template-columns: 1fr; }
@@ -892,8 +859,6 @@ details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
   .eng-text dd { margin-bottom: 10px; }
   .units { grid-template-columns: repeat(12, minmax(0, 1fr)); }
   .route { grid-template-columns: 1fr; }
-  .sources label { grid-template-columns: auto 1fr; }
-  .sources span { grid-column: 2; }
 }
 
 /* The logo where ZoomLens itself appears */

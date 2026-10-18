@@ -513,6 +513,7 @@ function catchUp() {
     return { spot: null, catchUp: true, label: "changes since your last question",
       a: `Nothing has changed since your last question. MK is still on ${now.where}.` };
   }
+  markStep("away");
   const steps = frames.slice(state.lastSeen + 1, state.frame + 1);
   const said = steps.map((f, i) => (i === steps.length - 1 ? f.change : plain(f.change)));
   const a = `While you were away, MK ${said[0]}.` + said.slice(1).map((c) => ` Then they ${c}.`).join("");
@@ -757,7 +758,7 @@ function answerTurn(result) {
 function showEmpty() {
   const p = document.createElement("p");
   p.className = "zl-empty";
-  p.textContent = "Ask about the shared screen, or use a shortcut above.";
+  p.textContent = "Press Describe screen, or click anything on the shared screen.";
   threadEl.replaceChildren(p);
 }
 
@@ -787,6 +788,7 @@ function ask(question, result, { instant = false, thinking } = {}) {
   if (result.field && result.field !== "a") state.used.add(`${result.spot}:${result.field}`);
   state.asked += 1;
   updatePresenterStrip();
+  if (question) markStep("ask");
 
   const q = question ? askedTurn(question) : null;
   if (q) threadEl.appendChild(q);
@@ -886,7 +888,7 @@ function showNotice() {
 
 // --- Scenes -------------------------------------------------------------------
 
-function showScene(key, { instant = false } = {}) {
+function showScene(key) {
   state.scene = key;
   state.frame = 0;
   state.lastSeen = 0;
@@ -900,18 +902,16 @@ function showScene(key, { instant = false } = {}) {
   showEmpty();
   clearNotice();
   setPill("ok", "Ready");
-  const v = view();
-  ask(v.spots[v.primary].q, fromSpot(v.primary), { instant });
   updateAwayBtn();
   startPresenter();
 }
 
-function selectTab(i, opts) {
+function selectTab(i) {
   tabs.forEach((t, j) => {
     t.setAttribute("aria-selected", String(i === j));
     t.tabIndex = i === j ? 0 : -1;
   });
-  showScene(tabs[i].dataset.scene, opts);
+  showScene(tabs[i].dataset.scene);
 }
 
 tabs.forEach((tab, i) => {
@@ -932,6 +932,7 @@ actionsEl.querySelectorAll("[data-mode]").forEach((btn) => {
     openLens();
     const mode = btn.dataset.mode;
     if (mode === "changed") return ask(null, catchUp());
+    if (mode === "describe") markStep("describe");
     if (mode === "colors") return explainColors();
     const explain = mode === "explain";
     const hit = fromIntent(explain ? "explain" : "summary") || fromSpot(view().primary);
@@ -951,6 +952,7 @@ document.querySelectorAll(".zl-mode").forEach((btn) => {
     modes[f] = !modes[f];
     btn.setAttribute("aria-checked", String(modes[f]));
     if (f === "color") {
+      if (modes.color) markStep("color");
       colorsBtn.hidden = !modes.color;
       colorNote();
     }
@@ -1023,7 +1025,52 @@ function announceChange() {
   trimThread();
   state.lastSeen = state.frame;
   threadEl.scrollTop = threadEl.scrollHeight;
+  markStep("away");
 }
+
+// --- Things to try ----------------------------------------------------------------
+
+const stepEls = Object.fromEntries([...document.querySelectorAll("[data-step]")].map((b) => [b.dataset.step, b]));
+
+function markStep(key) {
+  const btn = stepEls[key];
+  if (!btn || btn.parentElement.classList.contains("done")) return;
+  btn.parentElement.classList.add("done");
+  const sr = document.createElement("span");
+  sr.className = "sr-only";
+  sr.textContent = ", done";
+  btn.appendChild(sr);
+}
+
+// Draws the eye to the control a step is about, after the page has scrolled to it.
+function nudge(el) {
+  if (reduceMotion || !el) return;
+  el.classList.remove("attn");
+  void el.offsetWidth;
+  el.classList.add("attn");
+}
+
+const STEPS = {
+  describe: () => actionsEl.querySelector('[data-mode="describe"]').click(),
+  ask: () => {
+    const el = screenEl.querySelector(`[role=button][data-spot~="${view().primary}"]`);
+    if (el) activateSpot(el);
+  },
+  away: () => {
+    lookAway();
+    setTimeout(() => nudge(actionsEl.querySelector('[data-mode="changed"]')), AWAY_MS + 60);
+  },
+  color: () => {
+    const sw = document.querySelector('.zl-mode[data-feature="color"]');
+    if (!modes.color) sw.click();
+    nudge(alertEl.querySelector(".zl-alert-box") || colorsBtn);
+  },
+};
+Object.entries(stepEls).forEach(([key, btn]) => btn.addEventListener("click", () => {
+  if (state.asPresenter) setPresenterView(false);
+  openLens();
+  STEPS[key]();
+}));
 
 // --- Selecting part of the screen ----------------------------------------------
 
@@ -1392,8 +1439,9 @@ document.querySelectorAll("[data-try]").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (state.asPresenter) setPresenterView(false);
     if (!state.lensOpen) setLens(true);
-    (isMobile() ? $(".zl-composer") : demo)
-      .scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    const behavior = reduceMotion ? "auto" : "smooth";
+    if (isMobile()) $(".zl-composer").scrollIntoView({ behavior, block: "center" });
+    else demo.scrollIntoView({ behavior, block: "start" });
     const target = $(".zl-field");
     setTimeout(() => {
       input.focus({ preventScroll: true });
@@ -1420,51 +1468,6 @@ $("#lp-logo").addEventListener("click", () => {
 
 // --- Architecture: trace the path to whatever is chosen -----------------
 
-const ARCH = [
-  ["Zoom meeting",
-   "The panel runs inside your Zoom meeting through the Zoom Apps SDK, which tells it which meeting it is in and who is asking. It holds a WebSocket connection to the server."],
-  ["Screen capture",
-   "framebuffer.js keeps recent screen-share video from the meeting in memory, so a decodable image is always available. While the meeting stream is unavailable, screen.js reads the participant's own display instead."],
-  ["Decode",
-   "decode.js turns the buffered video into a single still image at the moment someone asks. In testing this took roughly 25 to 110 milliseconds."],
-  ["Answer",
-   "answer.js sends the image and the question to a vision model, with instructions for the kind of question asked: describe, explain, or something specific."],
-  ["Relay",
-   "relay.js addresses the answer to the one session that asked. A reply is refused unless that session actually made the request, and there is no broadcast."],
-];
-const DEFAULT_ARCH = [$("#fe-label").textContent, $("#fe-text").textContent];
-const flow = $("#flow");
-const nodes = [...flow.querySelectorAll(".node")];
-const links = [...flow.querySelectorAll(".link")];
-
-function trace(i) {
-  flow.classList.toggle("tracing", i !== null);
-  nodes.forEach((n, j) => {
-    n.classList.toggle("lit", i !== null && j <= i);
-    n.classList.toggle("current", j === i);
-    n.setAttribute("aria-selected", String(j === i));
-  });
-  links.forEach((l, j) => l.classList.toggle("lit", i !== null && j < i));
-  const [label, text] = i === null ? DEFAULT_ARCH : ARCH[i];
-  $("#fe-label").textContent = label;
-  $("#fe-text").textContent = text;
-}
-nodes.forEach((n, i) => {
-  n.addEventListener("focus", () => {
-    nodes.forEach((m, j) => (m.tabIndex = j === i ? 0 : -1));
-    trace(i);
-  });
-  n.addEventListener("click", () => trace(i));
-  n.addEventListener("keydown", (e) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (!step) return;
-    e.preventDefault();
-    nodes[(i + step + nodes.length) % nodes.length].focus();
-  });
-});
-flow.addEventListener("focusout", (e) => {
-  if (!flow.contains(e.relatedTarget)) trace(null);
-});
 
 // --- Engineering tabs and their simulations (they model the mechanism only) --
 
@@ -1487,7 +1490,7 @@ engTabs.forEach((t, i) => {
   });
 });
 
-// 4. Color Assist: one status column through simulated color vision. The
+// 3. Color Assist: one status column through simulated color vision. The
 // colors and differences are colors.js run on these exact colors.
 (() => {
   const root = $('[data-sim="colors"]');
@@ -1499,10 +1502,10 @@ engTabs.forEach((t, i) => {
     tritanopia: { red: "#eb1c47", amber: "#fa908d", green: "#159b8d" },
   };
   const SAYS = {
-    normal: "Red, amber and green, clearly different: red and green are 65.2 apart. No note.",
-    deuteranopia: "Red and green are now only 6.9 apart, under the threshold of 10, so Color Assist adds a note and offers to explain the colors.",
-    protanopia: "The colors move closer, but every pair stays 11.6 or more apart, so there's no note.",
-    tritanopia: "The colors shift, but every pair stays 20.4 or more apart, so there's no note.",
+    normal: "All three colors are easy to tell apart, so there's no note.",
+    deuteranopia: "Red and green now look almost the same, so Color Assist adds a note and offers to explain the colors.",
+    protanopia: "The colors look closer, but they can still be told apart, so there's no note.",
+    tritanopia: "The colors change, but stay easy to tell apart, so there's no note.",
   };
   const out = root.querySelector(".sim-result");
   const show = (vision) => {
@@ -1529,7 +1532,8 @@ function simSwitch(root, attr, onChange) {
   const units = Array.from({ length: 24 }, (_, i) =>
     i === 0 ? "SPS" : i === 1 ? "PPS" : (i - 2) % 8 === 0 ? "I" : "P");
   const list = root.querySelector(".units");
-  list.innerHTML = units.map((u) => `<li class="u-${u.toLowerCase()}">${u}</li>`).join("");
+  const shown = { SPS: "S", PPS: "S", I: "F", P: "C" };
+  list.innerHTML = units.map((u) => `<li class="u-${u.toLowerCase()}">${shown[u]}</li>`).join("");
   const cells = [...list.children];
   const range = root.querySelector("input[type=range]");
   const out = root.querySelector(".sim-result");
@@ -1548,9 +1552,9 @@ function simSwitch(root, attr, onChange) {
     root.classList.toggle("bad", !ok);
     out.textContent = keep() === "last"
       ? (units[now] === "I"
-        ? "Decodable, but only by luck: the latest unit happens to be a keyframe."
-        : "Not decodable. A P unit only describes how the picture changed since earlier ones.")
-      : `Decodable: the parameter sets, the latest keyframe and the ${now - key} changes since it. ${kept.length} units in memory.`;
+        ? "A picture, but only by luck: the newest piece happens to be a full picture."
+        : "No picture. This piece only says what changed since earlier ones.")
+      : `A picture: the last full picture plus the ${now - key} changes since it, ${kept.length} pieces kept.`;
   }
   range.addEventListener("input", draw);
   draw();
@@ -1580,51 +1584,26 @@ function simSwitch(root, attr, onChange) {
   };
   root.querySelector('[data-act="ask"]').addEventListener("click", () => {
     asked = true;
-    say(["Server sends the answer to your session only. AR and JL receive nothing.",
-         "You ask. The request is recorded on your session."], "you", "Your answer", true);
+    say(["The answer goes to you only. AR and JL get nothing.",
+         "You ask a question."], "you", "Your answer", true);
   });
   root.querySelector('[data-act="snoop"]').addEventListener("click", () => {
-    say(["Refused. There is no way to send to everyone: every message is addressed to one session.",
-         "JL's modified panel asks to receive all answers."], "jl", "Refused", false);
+    say(["Refused. There's no way to send something to everyone.",
+         "JL's tampered panel asks for every answer."], "jl", "Refused", false);
   });
   root.querySelector('[data-act="steal"]').addEventListener("click", () => {
     say([asked
-      ? "Refused. That request belongs to your session, not JL's, so the reply cannot go to JL."
-      : "Refused. No request with that id is waiting on JL's session.",
-      "JL sends your request id from JL's own session."], "jl", "Refused", false);
+      ? "Refused. That question was yours, so its answer can't go to JL."
+      : "Refused. JL isn't waiting for any answer.",
+      "JL pretends to be waiting for your answer."], "jl", "Refused", false);
   });
 })();
 
-// 3. A meeting stream that would not start.
-(() => {
-  const root = $('[data-sim="sources"]');
-  if (!root) return;
-  const SRC = {
-    stream: ["Meeting stream", "Answers are labelled as coming from the meeting's screen share."],
-    display: ["Your own display", "Answers are labelled as coming from your display, not the meeting stream. The capture can include anything else on your screen."],
-    recording: ["A recording", "Answers are labelled as coming from a recording, not the live meeting."],
-  };
-  const boxes = [...root.querySelectorAll("[data-src]")];
-  const name = root.querySelector("[data-src-name]");
-  const label = root.querySelector("[data-src-label]");
-  function draw() {
-    const first = boxes.find((b) => b.checked);
-    boxes.forEach((b) => b.closest("li").classList.toggle("used", b === first));
-    if (!first) {
-      name.textContent = "No source";
-      label.textContent = "ZoomLens says it cannot see a shared screen instead of guessing.";
-      return;
-    }
-    [name.textContent, label.textContent] = SRC[first.dataset.src];
-  }
-  boxes.forEach((b) => b.addEventListener("change", draw));
-  draw();
-})();
 
 // --- Scroll: reveal whole sections, never individual paragraphs -------------
 
 const toReveal = document.querySelectorAll(
-  ".steps3, .priv, .flow, .eng, .faq-list");
+  ".steps3, .priv, .eng, .faq-list");
 if ("IntersectionObserver" in window && !reduceMotion) {
   toReveal.forEach((el) => el.classList.add("rise"));
   const io = new IntersectionObserver((entries) => {
@@ -1646,4 +1625,4 @@ if ("IntersectionObserver" in window) {
 
 syncLensButton(true);
 updatePresenterStrip();
-selectTab(0, { instant: true });
+selectTab(0);
