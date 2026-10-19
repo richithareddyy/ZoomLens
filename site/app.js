@@ -79,7 +79,7 @@ function cellAnswer(rowId, col) {
 }
 
 const sheetSpots = {
-  change: { label: "Change column", q: "What changed this quarter?",
+  change: { label: "Change column", q: "How did each segment do?",
     a: "[[Enterprise rose the most|ent change]], up 12% on Q2. [[Mid-market grew 3%|mid change]], [[self-serve slipped 4%|self change]], and [[expenses rose 4%|opex change]].",
     why: "Almost all of the growth came from Enterprise, which added [[53k on Q2|ent q3]]. Mid-market added 8k and self-serve lost 6k.",
     more: "Across all three quarters, Enterprise is up 19%, from [[412|ent q1]] to [[491|ent q3]]. Mid-market is up 8% and self-serve is down 6%." },
@@ -856,7 +856,10 @@ threadEl.addEventListener("click", (e) => {
   }
   const chip = e.target.closest(".zl-suggest button");
   if (chip) return askTyped(chip.textContent);
-  if (e.target.closest(".zl-notice button")) return askTyped("What did I miss?");
+  if (e.target.closest(".zl-notice button")) {
+    openLens();
+    ask(null, catchUp());
+  }
 });
 
 function askTyped(text) {
@@ -877,7 +880,7 @@ function showNotice() {
   if (!note) {
     note = document.createElement("div");
     note.className = "zl-notice";
-    note.innerHTML = '<span></span><button type="button">What did I miss?</button>';
+    note.innerHTML = '<span></span><button type="button">What changed?</button>';
   }
   threadEl.querySelector(".zl-empty")?.remove();
   note.querySelector("span").textContent =
@@ -902,7 +905,7 @@ function showScene(key) {
   showEmpty();
   clearNotice();
   setPill("ok", "Ready");
-  updateAwayBtn();
+  renderGuide();
   startPresenter();
 }
 
@@ -932,10 +935,15 @@ actionsEl.querySelectorAll("[data-mode]").forEach((btn) => {
     openLens();
     const mode = btn.dataset.mode;
     if (mode === "changed") return ask(null, catchUp());
-    if (mode === "describe") markStep("describe");
     if (mode === "colors") return explainColors();
     const explain = mode === "explain";
-    const hit = fromIntent(explain ? "explain" : "summary") || fromSpot(view().primary);
+    let hit = fromIntent(explain ? "explain" : "summary") || fromSpot(view().primary);
+    // A description is of the whole screen, so nothing on it is singled out.
+    // Follow-ups still build on the part it leads with.
+    if (!explain) {
+      markStep("describe");
+      hit = { ...hit, spot: null, ctx: hit.ctx || hit.spot, label: "the whole screen" };
+    }
     ask(null, hit, { thinking: explain ? "Working out what this shows…" : "Reading the shared screen…" });
   });
 });
@@ -952,9 +960,16 @@ document.querySelectorAll(".zl-mode").forEach((btn) => {
     modes[f] = !modes[f];
     btn.setAttribute("aria-checked", String(modes[f]));
     if (f === "color") {
-      if (modes.color) markStep("color");
       colorsBtn.hidden = !modes.color;
-      colorNote();
+      // Switching it on is the moment someone wants to know, so answer then
+      // rather than leaving a note to click through.
+      if (modes.color) {
+        markStep("color");
+        openLens();
+        explainColors();
+      } else {
+        colorNote();
+      }
     }
   });
 });
@@ -1028,49 +1043,68 @@ function announceChange() {
   markStep("away");
 }
 
-// --- Things to try ----------------------------------------------------------------
+// --- The guide: one thing to try at a time --------------------------------------
+// It never acts for the visitor. It names a control in the panel and lights it,
+// so what they learn is the panel itself. Steps done out of order still count.
 
-const stepEls = Object.fromEntries([...document.querySelectorAll("[data-step]")].map((b) => [b.dataset.step, b]));
+const guideN = $("#guide-n");
+const guideText = $("#guide-text");
+const againBtn = $("#guide-again");
+const TOUR = ["describe", "ask", "away", "color"];
+const done = new Set();
+let wentAway = false;
+let guided = null;
+
+const GUIDE = {
+  describe: { say: "Press <b>Describe screen</b> in the panel to hear what MK is showing.",
+    target: () => actionsEl.querySelector('[data-mode="describe"]') },
+  ask: { say: "Now click anything on MK's screen to ask about it, or type a question in the panel.",
+    target: () => hintEl },
+  away: { say: "Step out for a moment. MK keeps presenting while you're gone.",
+    target: () => awayBtn },
+  gone: { say: "You're away. MK is still presenting…" },
+  back: { say: "MK changed something while you were away. Press <b>What changed?</b> to catch up.",
+    target: () => actionsEl.querySelector('[data-mode="changed"]') },
+  color: { say: "Last one: turn on <b>Color Assist</b> to hear what the colors on screen mean.",
+    target: () => $('.zl-mode[data-feature="color"]') },
+  end: { say: "That's the tour. Try another example above, or ask your own question." },
+  presenter: { say: "This is what MK sees: no ZoomLens anywhere. Press <b>Back to your view</b> to carry on.",
+    target: () => viewBtn },
+};
+
+function renderGuide() {
+  const next = TOUR.find((k) => !done.has(k));
+  let key = next || "end";
+  if (state.asPresenter) key = "presenter";
+  else if (next === "away" && state.away) key = "gone";
+  else if (next === "away" && wentAway) key = "back";
+
+  guideN.textContent = next ? `Step ${TOUR.indexOf(next) + 1} of ${TOUR.length}` : "Done";
+  guideText.innerHTML = GUIDE[key].say;     // authored above, never user input
+  awayBtn.hidden = key !== "away";
+  againBtn.hidden = done.size === 0;
+
+  guided?.classList.remove("guide-on");
+  guided = GUIDE[key].target?.() || null;
+  guided?.classList.add("guide-on");
+}
 
 function markStep(key) {
-  const btn = stepEls[key];
-  if (!btn || btn.parentElement.classList.contains("done")) return;
-  btn.parentElement.classList.add("done");
-  const sr = document.createElement("span");
-  sr.className = "sr-only";
-  sr.textContent = ", done";
-  btn.appendChild(sr);
+  if (done.has(key)) return;
+  done.add(key);
+  renderGuide();
 }
 
-// Draws the eye to the control a step is about, after the page has scrolled to it.
-function nudge(el) {
-  if (reduceMotion || !el) return;
-  el.classList.remove("attn");
-  void el.offsetWidth;
-  el.classList.add("attn");
-}
-
-const STEPS = {
-  describe: () => actionsEl.querySelector('[data-mode="describe"]').click(),
-  ask: () => {
-    const el = screenEl.querySelector(`[role=button][data-spot~="${view().primary}"]`);
-    if (el) activateSpot(el);
-  },
-  away: () => {
-    lookAway();
-    setTimeout(() => nudge(actionsEl.querySelector('[data-mode="changed"]')), AWAY_MS + 60);
-  },
-  color: () => {
-    const sw = document.querySelector('.zl-mode[data-feature="color"]');
-    if (!modes.color) sw.click();
-    nudge(alertEl.querySelector(".zl-alert-box") || colorsBtn);
-  },
-};
-Object.entries(stepEls).forEach(([key, btn]) => btn.addEventListener("click", () => {
-  if (state.asPresenter) setPresenterView(false);
-  openLens();
-  STEPS[key]();
-}));
+againBtn.addEventListener("click", () => {
+  done.clear();
+  wentAway = false;
+  if (modes.color) {
+    modes.color = false;
+    $('.zl-mode[data-feature="color"]').setAttribute("aria-checked", "false");
+    colorsBtn.hidden = true;
+  }
+  showScene(state.scene);
+});
 
 // --- Selecting part of the screen ----------------------------------------------
 
@@ -1278,7 +1312,6 @@ function advanceFrame() {
   setTimeout(() => { if (stateEl.dataset.kind === "info") setPill("ok", "Ready"); }, 2600);
   if (modes.changes) announceChange();
   else showNotice();
-  updateAwayBtn();
 }
 
 function togglePresenter() {
@@ -1298,23 +1331,17 @@ if ("IntersectionObserver" in window) {
 
 // --- Look away: the meeting carries on without you ----------------------------------
 
-function updateAwayBtn() {
-  awayBtn.disabled = state.away;
-  awayBtn.textContent = atEnd() ? "Start the meeting over" : "Look away for 20 seconds";
-}
-
 function lookAway() {
   if (state.away) return;
-  if (atEnd()) {
-    showScene(state.scene);
-    awayStatus.textContent = "The meeting started over.";
-    return;
-  }
+  if (state.asPresenter) setPresenterView(false);
+  // Slides can reach the end on their own; start them again so there is
+  // something to miss.
+  if (atEnd()) showScene(state.scene);
   state.away = true;
   stopPresenter();
   setDrawMode(false);
   pointAt(null);
-  updateAwayBtn();
+  renderGuide();
   meeting.classList.add("away");
   awayStatus.textContent = "You looked away. MK keeps presenting.";
 
@@ -1322,8 +1349,9 @@ function lookAway() {
   for (let i = 1; i <= steps; i++) setTimeout(advanceFrame, (AWAY_MS * i) / (steps + 1));
   setTimeout(() => {
     state.away = false;
+    wentAway = true;
     meeting.classList.remove("away");
-    updateAwayBtn();
+    renderGuide();
     const n = state.frame - state.lastSeen;
     awayStatus.textContent = modes.changes
       ? "You're back. ZoomLens described each change as it happened."
@@ -1362,7 +1390,7 @@ function setPresenterView(on) {
   youTile.textContent = on ? "SL" : "You";
   screenEl.inert = on;
   $("#lens-panel").inert = on;
-  awayBtn.hidden = on;
+  renderGuide();
   if (on) {
     setDrawMode(false);
     pointAt(null);
@@ -1417,40 +1445,14 @@ mobileQuery.addEventListener("change", () => {
   syncLensButton(true);
 });
 
-// --- Meeting controls: simulated --------------------------------------------
-
-function toggleControl(btn, cls, onLabel, offLabel, onTip, offTip) {
-  btn.addEventListener("click", () => {
-    const off = btn.getAttribute("aria-pressed") !== "true";
-    btn.setAttribute("aria-pressed", String(off));
-    btn.setAttribute("aria-label", off ? offLabel : onLabel);
-    btn.dataset.tip = off ? offTip : onTip;
-    meeting.classList.toggle(cls, off);
-  });
-}
-toggleControl($("#ctl-mic"), "mic-off",
-  "Mute microphone (simulated)", "Unmute microphone (simulated)", "Mute (simulated)", "Unmute (simulated)");
-toggleControl($("#ctl-cam"), "cam-off",
-  "Stop video (simulated)", "Start video (simulated)", "Stop video (simulated)", "Start video (simulated)");
-
-// --- "Try the demo": scroll to the question box and focus it --------------
+// --- "Try the demo": bring the guide into view, focus on what it names ------
 
 document.querySelectorAll("[data-try]").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (state.asPresenter) setPresenterView(false);
     if (!state.lensOpen) setLens(true);
-    const behavior = reduceMotion ? "auto" : "smooth";
-    if (isMobile()) $(".zl-composer").scrollIntoView({ behavior, block: "center" });
-    else demo.scrollIntoView({ behavior, block: "start" });
-    const target = $(".zl-field");
-    setTimeout(() => {
-      input.focus({ preventScroll: true });
-      if (!reduceMotion) {
-        target.classList.remove("attn");
-        void target.offsetWidth;                   // restart the animation
-        target.classList.add("attn");
-      }
-    }, reduceMotion ? 0 : 450);
+    demo.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    if (guided?.matches("button")) setTimeout(() => guided.focus({ preventScroll: true }), reduceMotion ? 0 : 450);
   });
 });
 
@@ -1490,6 +1492,25 @@ engTabs.forEach((t, i) => {
   });
 });
 
+// A line above each simulation saying what to try next. It lights the control
+// it names, the same way the meeting demo's guide does.
+function trySteps(root, steps) {
+  const line = document.createElement("p");
+  line.className = "sim-try";
+  root.prepend(line);
+  let at = -1, lit = null;
+  const go = (i) => {
+    if (i <= at || i >= steps.length) return;
+    at = i;
+    line.innerHTML = steps[i].say;     // authored here, never user input
+    lit?.classList.remove("guide-on");
+    lit = steps[i].target?.() || null;
+    lit?.classList.add("guide-on");
+  };
+  go(0);
+  return go;
+}
+
 // 3. Color Assist: one status column through simulated color vision. The
 // colors and differences are colors.js run on these exact colors.
 (() => {
@@ -1508,9 +1529,15 @@ engTabs.forEach((t, i) => {
     tritanopia: "The colors change, but stay easy to tell apart, so there's no note.",
   };
   const out = root.querySelector(".sim-result");
+  const next = trySteps(root, [
+    { say: "<b>Try it:</b> switch to <b>Red-green (deuteranopia)</b> to see these dots the way many color-blind people do.",
+      target: () => root.querySelector('[data-vision="deuteranopia"]') },
+    { say: "Red and green now look almost alike, so ZoomLens would step in. Try the other two types as well." },
+  ]);
   const show = (vision) => {
     root.querySelectorAll("[data-c]").forEach((dot) => { dot.style.background = SEEN[vision][dot.dataset.c]; });
     out.textContent = SAYS[vision];
+    if (vision === "deuteranopia") next(1);
   };
   show(simSwitch(root, "vision", show)());
 })();
@@ -1537,7 +1564,14 @@ function simSwitch(root, attr, onChange) {
   const cells = [...list.children];
   const range = root.querySelector("input[type=range]");
   const out = root.querySelector(".sim-result");
-  const keep = simSwitch(root, "keep", draw);
+  const keep = simSwitch(root, "keep", () => { draw(); if (keep() === "clip") next(2); });
+  const next = trySteps(root, [
+    { say: "<b>Try it:</b> drag <b>When you ask</b> to pick the moment you press a button in the panel.",
+      target: () => range },
+    { say: "Most moments give no picture, because most pieces only say what changed. Now switch to <b>Keep back to the last full picture</b>.",
+      target: () => root.querySelector('[data-keep="clip"]') },
+    { say: "Now every moment gives a picture. That's what ZoomLens keeps." },
+  ]);
 
   function draw() {
     const now = Number(range.value);
@@ -1556,7 +1590,7 @@ function simSwitch(root, attr, onChange) {
         : "No picture. This piece only says what changed since earlier ones.")
       : `A picture: the last full picture plus the ${now - key} changes since it, ${kept.length} pieces kept.`;
   }
-  range.addEventListener("input", draw);
+  range.addEventListener("input", () => { draw(); next(1); });
   draw();
 })();
 
@@ -1567,6 +1601,14 @@ function simSwitch(root, attr, onChange) {
   const log = root.querySelector(".sim-log");
   const box = (who) => root.querySelector(`[data-who="${who}"]`);
   let asked = false;
+  const act = (name) => root.querySelector(`[data-act="${name}"]`);
+  const next = trySteps(root, [
+    { say: "<b>Try it:</b> press <b>You ask a question</b>.", target: () => act("ask") },
+    { say: "Now play JL, whose copy of ZoomLens has been tampered with. Press <b>JL tries to get everyone's answers</b>.",
+      target: () => act("snoop") },
+    { say: "Refused. Now press <b>JL tries to grab your answer</b>.", target: () => act("steal") },
+    { say: "Refused. The server only ever sends an answer to the person who asked." },
+  ]);
   const say = (lines, who, got, ok) => {
     // lines[0] is the outcome, lines[1] what was attempted; newest shows first.
     lines.forEach((l, i) => {
@@ -1582,16 +1624,19 @@ function simSwitch(root, attr, onChange) {
     void b.offsetWidth;
     b.classList.add(ok ? "hit" : "no");
   };
-  root.querySelector('[data-act="ask"]').addEventListener("click", () => {
+  act("ask").addEventListener("click", () => {
+    next(1);
     asked = true;
     say(["The answer goes to you only. AR and JL get nothing.",
          "You ask a question."], "you", "Your answer", true);
   });
-  root.querySelector('[data-act="snoop"]').addEventListener("click", () => {
+  act("snoop").addEventListener("click", () => {
+    next(2);
     say(["Refused. There's no way to send something to everyone.",
          "JL's tampered panel asks for every answer."], "jl", "Refused", false);
   });
-  root.querySelector('[data-act="steal"]').addEventListener("click", () => {
+  act("steal").addEventListener("click", () => {
+    next(3);
     say([asked
       ? "Refused. That question was yours, so its answer can't go to JL."
       : "Refused. JL isn't waiting for any answer.",

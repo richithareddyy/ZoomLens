@@ -330,12 +330,9 @@ button.ctl:hover { background: #2E323B; }
 .zl-hint { margin: 5px 2px 0; font-size: 0.64rem; color: var(--zl-text-3); }
 
 /* "Try ZoomLens" draws the eye to where to start, once, without a modal */
-.attn { animation: attn 1.6s ease-out 1; }
-@keyframes attn { 0% { box-shadow: 0 0 0 0 rgba(45,140,255,.55) } 70% { box-shadow: 0 0 0 9px rgba(45,140,255,0) } 100% { box-shadow: 0 0 0 0 rgba(45,140,255,0) } }
 
 /* Meeting controls -------------------------------------------------------- */
 .ctl { position: relative; display: inline-flex; align-items: center; gap: 6px; }
-button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 .ctl-lens { color: #9CC3FF; }
 .ctl-lens[aria-pressed="true"] { background: #2B3442; color: #fff; }
 .ctl-inert { opacity: .55; }
@@ -356,9 +353,6 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 
 /* Your own tile reflects the simulated mic and camera */
 .tile.you { overflow: hidden; }
-.muted-icon { display: none; position: absolute; right: 6px; bottom: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--rec); }
-.meeting.mic-off .muted-icon { display: block; }
-.meeting.cam-off .tile.you { background: #15171C; }
 
 /* Easter egg: the shared screen comes into focus, the meeting softens */
 .meeting.focus-mode .m-top, .meeting.focus-mode .tiles, .meeting.focus-mode .m-controls,
@@ -636,22 +630,33 @@ button.ctl[aria-pressed="true"]:not(.ctl-lens) { color: #FF8A80; }
 /* Lands below the sticky nav, so the screen tabs stay in view. */
 #demo { scroll-margin-top: 76px; }
 
-/* A first visit's path through the demo; each step ticks off when done. */
-.try-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 0; }
-.try-steps button {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 5px 14px 5px 5px;
-  font: 600 0.86rem var(--font); color: var(--text); background: var(--bg);
-  border: 1px solid var(--line-ui); border-radius: 999px; cursor: pointer; transition: border-color .2s, background .2s, color .2s;
+/* One thing to try at a time. The control it names glows in the demo itself. */
+.guide {
+  display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; min-height: 54px;
+  margin: 0 0 14px; padding: 8px 10px 8px 16px;
+  background: var(--blue-wash); border: 1px solid #D3E2FF; border-radius: 12px;
 }
-.try-steps button:hover { border-color: var(--blue-ink); background: var(--blue-wash); }
-.try-steps button:focus-visible { outline: 2px solid var(--blue-ink); outline-offset: 2px; }
-.try-steps .n { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; font-size: 0.78rem; font-weight: 700; color: var(--blue-ink); background: var(--blue-wash); }
-.try-steps .done button { color: var(--text-2); border-color: var(--line); }
-.try-steps .done .n { font-size: 0; color: #fff; background: #2E7D32; }
-.try-steps .done .n::before { content: "✓"; font-size: 0.8rem; }
+.guide-n { flex: none; font-size: 0.72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--blue-ink); }
+.guide-text { flex: 1 1 280px; margin: 0; font-size: 0.95rem; line-height: 1.45; color: var(--text); }
+.guide .btn { flex: none; }
+.guide [hidden] { display: none; }
+.guide-again {
+  flex: none; margin-left: auto; padding: 6px 6px; font: 600 0.84rem var(--font); color: var(--blue-ink);
+  background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+}
+.guide-again:focus-visible { outline: 2px solid var(--blue-ink); outline-offset: 2px; border-radius: 4px; }
+.guide-on { animation: guide-glow 1.8s ease-in-out infinite; }
+.zl-mode.guide-on { border-radius: 6px; }
+@keyframes guide-glow { 0%,100% { box-shadow: 0 0 0 2px rgba(45,140,255,.95) } 50% { box-shadow: 0 0 0 6px rgba(45,140,255,.3) } }
+/* The hint under the screen is text, so it lights up rather than glowing. */
+.spot-hint.guide-on { animation: none; color: #9CC3FF; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) {
+  .guide-on { animation: none; box-shadow: 0 0 0 3px rgba(45,140,255,.85); }
+  .spot-hint.guide-on { box-shadow: none; }
+}
 @media (max-width: 760px) {
-  .try-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .try-steps button { width: 100%; height: 100%; padding: 6px 10px 6px 6px; border-radius: 12px; font-size: 0.8rem; text-align: left; }
+  .guide { padding: 10px 12px; }
+  .guide-text { flex-basis: 100%; font-size: 0.9rem; }
 }
 .demo-top .tabs { margin-bottom: 0; }
 .demo-flag {
@@ -801,6 +806,8 @@ details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
 .sim-seg button { font: 600 0.8rem var(--font); color: var(--text-2); background: none; border: none; padding: 6px 11px; border-radius: 7px; cursor: pointer; }
 .sim-seg button[aria-checked="true"] { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(16,24,40,.1); }
 .sim-result { margin: 0; font-size: 0.9rem; font-weight: 600; color: #067647; min-height: 1.5em; }
+.sim-try { margin: 0; padding: 9px 12px; font-size: 0.9rem; line-height: 1.45; color: var(--text); background: var(--blue-wash); border: 1px solid #D3E2FF; border-radius: 8px; }
+.sim-range input.guide-on { border-radius: 999px; }
 .sim-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .sim-actions button {
   font: 600 0.82rem var(--font); color: var(--text); background: #fff;

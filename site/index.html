@@ -68,12 +68,12 @@
           </div>
           <span class="demo-flag">Demo with scripted answers</span>
           </div>
-          <ol class="try-steps" aria-label="Things to try">
-            <li><button type="button" data-step="describe"><span class="n" aria-hidden="true">1</span>Describe the screen</button></li>
-            <li><button type="button" data-step="ask"><span class="n" aria-hidden="true">2</span>Ask about part of the screen</button></li>
-            <li><button type="button" data-step="away"><span class="n" aria-hidden="true">3</span>Look away, then What changed?</button></li>
-            <li><button type="button" data-step="color"><span class="n" aria-hidden="true">4</span>Turn on Color Assist</button></li>
-          </ol>
+          <div class="guide" id="guide">
+            <span class="guide-n" id="guide-n">Step 1 of 4</span>
+            <p class="guide-text" id="guide-text" role="status" aria-live="polite"></p>
+            <button type="button" class="btn btn-primary btn-sm" id="away-btn" hidden>Look away</button>
+            <button type="button" class="guide-again" id="guide-again" hidden>Start over</button>
+          </div>
           <div class="demo-labels" aria-hidden="true">
             <span>MK's shared screen</span>
             <span>Your <em>private</em> ZoomLens panel</span>
@@ -105,7 +105,7 @@
                   <div class="tile"><span>AR</span></div>
                   <div class="tile speaking"><span>MK</span><i class="talk" aria-hidden="true"></i></div>
                   <div class="tile"><span>JL</span></div>
-                  <div class="tile you" id="you-tile"><span>You</span><i class="muted-icon" aria-hidden="true"></i></div>
+                  <div class="tile you" id="you-tile"><span>You</span></div>
                 </div>
               </div>
 
@@ -146,8 +146,8 @@
             </div>
 
             <div class="m-controls" role="toolbar" aria-label="Meeting controls, simulated">
-              <button type="button" class="ctl" id="ctl-mic" aria-pressed="false" aria-label="Mute microphone (simulated)" data-tip="Mute (simulated)">Mic</button>
-              <button type="button" class="ctl" id="ctl-cam" aria-pressed="false" aria-label="Stop video (simulated)" data-tip="Stop video (simulated)">Camera</button>
+              <span class="ctl ctl-inert" aria-hidden="true">Mic</span>
+              <span class="ctl ctl-inert" aria-hidden="true">Camera</span>
               <span class="ctl ctl-inert" aria-hidden="true">Participants</span>
               <span class="ctl ctl-inert" aria-hidden="true">Chat</span>
               <span class="ctl ctl-inert ctl-share" aria-hidden="true">Share</span>
@@ -155,7 +155,6 @@
             </div>
           </div>
           <div class="viewbar">
-            <button type="button" class="btn btn-primary btn-sm" id="away-btn">Look away for 20 seconds</button>
             <button type="button" class="btn btn-ghost btn-sm" id="view-toggle" aria-pressed="false" aria-controls="meeting">See it as the presenter</button>
             <p id="view-note">This is your view, with ZoomLens open.</p>
           </div>
@@ -264,8 +263,8 @@
             <div class="sim sim-stream" data-sim="stream">
               <div class="sim-bar">
                 <div class="sim-seg" role="radiogroup" aria-label="What ZoomLens keeps">
-                  <button type="button" role="radio" aria-checked="false" data-keep="last">Keep only the newest piece</button>
-                  <button type="button" role="radio" aria-checked="true" data-keep="clip">Keep back to the last full picture</button>
+                  <button type="button" role="radio" aria-checked="true" data-keep="last">Keep only the newest piece</button>
+                  <button type="button" role="radio" aria-checked="false" data-keep="clip">Keep back to the last full picture</button>
                 </div>
               </div>
               <ol class="units" aria-label="Pieces of video as they arrive"></ol>
