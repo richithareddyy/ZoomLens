@@ -1,8 +1,8 @@
-# Zoom Lens
+# ZoomLens
 
 A development prototype for asking questions about a shared screen during a Zoom meeting. The panel offers **Describe screen**, **Explain**, **What changed?**, a question box, follow-ups to the previous answer, and two accessibility modes.
 
-The idea is to help someone catch up with a slide, chart, or piece of code without interrupting the presentation. Replies return to the requesting WebSocket session. The current backend still needs authentication and data-retention work before broader use.
+The idea is to help someone catch up with a slide, chart, or piece of code without interrupting the presentation. Replies return to the requesting WebSocket session. Who is asking is checked with Zoom, as described under [Current boundaries](#current-boundaries); data-retention work is still needed before broader use.
 
 ## From a screen share to an answer
 
