@@ -257,47 +257,49 @@
       <div class="wrap">
         <p class="eyebrow">Engineering</p>
         <h2>Behind the meeting window.</h2>
-        <p class="section-lede">Three problems ZoomLens had to solve, each with a small demo you can try.</p>
+        <p class="section-lede">Three tricky problems ZoomLens had to solve, explained simply. Each one has a small demo you can play with.</p>
 
         <div class="eng">
           <div class="eng-tabs" role="tablist" aria-label="Engineering highlights" aria-orientation="vertical">
-            <button type="button" role="tab" class="eng-tab" id="eng-tab-stream" aria-controls="eng-stream" aria-selected="true"><span class="n">01</span>Turning video into a picture</button>
-            <button type="button" role="tab" class="eng-tab" id="eng-tab-routing" aria-controls="eng-routing" aria-selected="false" tabindex="-1"><span class="n">02</span>Answers reach only you</button>
-            <button type="button" role="tab" class="eng-tab" id="eng-tab-access" aria-controls="eng-access" aria-selected="false" tabindex="-1"><span class="n">03</span>Noticing changes and colors</button>
+            <button type="button" role="tab" class="eng-tab" id="eng-tab-stream" aria-controls="eng-stream" aria-selected="true"><span class="n">01</span>How ZoomLens sees the screen</button>
+            <button type="button" role="tab" class="eng-tab" id="eng-tab-routing" aria-controls="eng-routing" aria-selected="false" tabindex="-1"><span class="n">02</span>How your answers stay private</button>
+            <button type="button" role="tab" class="eng-tab" id="eng-tab-access" aria-controls="eng-access" aria-selected="false" tabindex="-1"><span class="n">03</span>How it knows when to speak up</button>
           </div>
           <div class="eng-panels">
           <div class="eng-panel" role="tabpanel" id="eng-stream" aria-labelledby="eng-tab-stream">
-            <h3>Turning video into a picture</h3>
-            <dl class="eng-sum"><dt>Problem</dt><dd>Zoom sends a shared screen as video, and most of that video only records what changed. You can&#39;t grab one piece of it and get a picture.</dd><dt>Solution</dt><dd>ZoomLens keeps a short stretch of video, back to the last full picture, and turns it into an image only when you ask.</dd></dl>
+            <h3>How ZoomLens sees the screen</h3>
+            <p class="eng-plain">Think of a flipbook where only some pages are complete drawings, and the pages in between only show what moved. To see any page, you start from the last complete drawing and add the changes after it.</p>
+            <dl class="eng-sum"><dt>Problem</dt><dd>Zoom doesn&#39;t send ZoomLens pictures of the shared screen. It sends video, and video saves space by sending a full picture only now and then. Everything in between is a small update that only says what changed. Grab one of those updates on its own and there&#39;s no picture to look at.</dd><dt>Solution</dt><dd>ZoomLens holds on to the latest full picture and every update since. When you press a button, it puts them together and gets an exact picture of the screen at that moment.</dd></dl>
             <div class="sim sim-stream" data-sim="stream">
               <div class="sim-bar">
                 <div class="sim-seg" role="radiogroup" aria-label="What ZoomLens keeps">
-                  <button type="button" role="radio" aria-checked="true" data-keep="last">Keep only the newest piece</button>
-                  <button type="button" role="radio" aria-checked="false" data-keep="clip">Keep back to the last full picture</button>
+                  <button type="button" role="radio" aria-checked="true" data-keep="last">Keep only the latest update</button>
+                  <button type="button" role="radio" aria-checked="false" data-keep="clip">Keep everything since the last full picture</button>
                 </div>
               </div>
               <ol class="units" aria-label="Pieces of video as they arrive"></ol>
-              <p class="units-key"><b>F</b> a full picture · <b>C</b> only what changed · <b>S</b> setup</p>
-              <label class="sim-range">When you ask
+              <p class="units-key"><b>F</b> full picture · <b>C</b> update, only what changed · <b>S</b> setup info</p>
+              <label class="sim-range">The moment you press a button
                 <input type="range" min="3" max="23" value="14" aria-describedby="stream-result">
               </label>
               <p class="sim-result" id="stream-result" role="status" aria-live="polite"></p>
             </div>
             <details class="more">
-              <summary>More detail</summary>
+              <summary>Technical detail</summary>
               <dl class="eng-text"><dt>Problem</dt><dd>Shared screens arrive as H.264, where one keyframe is a full image and everything after it is only a change. A single frame on its own is not decodable.</dd> <dt>Implementation</dt><dd>An in-memory buffer keeps the latest parameter sets plus everything since the most recent keyframe, so it always holds a decodable clip. Two bugs surfaced: keyframes split across several units were being cut to their last fragment, and data arriving in chunks broke wherever a boundary fell across two.</dd> <dt>Tradeoff</dt><dd>Memory is capped by size rather than count, and drops back to the keyframe when exceeded, so a busy screen costs more memory but never produces an undecodable image.</dd></dl>
               <p>Most of an answer&#39;s wait is the model, not the capture: the panel is set to expect about 6 seconds for Describe and 12 for Explain.</p>
               <p class="more-docs">Source: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/framebuffer.js">framebuffer.js</a>, <a href="https://github.com/richithareddyy/ZoomLens/blob/main/decode.js">decode.js</a></p>
             </details>
           </div>
           <div class="eng-panel" role="tabpanel" id="eng-routing" aria-labelledby="eng-tab-routing" hidden>
-            <h3>Answers reach only you</h3>
-            <dl class="eng-sum"><dt>Problem</dt><dd>Everyone in the meeting runs their own copy of ZoomLens, and anyone could tamper with theirs.</dd><dt>Solution</dt><dd>The server, not the panel, decides who gets each answer. It checks with Zoom who is asking, and sends every answer to that one person.</dd></dl>
+            <h3>How your answers stay private</h3>
+            <p class="eng-plain">Think of a mail carrier who checks your ID and hands your letter to you, instead of leaving it on a table where anyone could pick it up.</p>
+            <dl class="eng-sum"><dt>Problem</dt><dd>Everyone in the meeting can open their own copy of ZoomLens, and someone could tamper with theirs to try to read other people&#39;s answers.</dd><dt>Solution</dt><dd>Who gets an answer isn&#39;t decided in anyone&#39;s copy of ZoomLens. It&#39;s decided on the server, which nobody in the meeting can change. Zoom confirms who&#39;s asking, and the answer goes to that one person only.</dd></dl>
             <div class="sim sim-privacy" data-sim="privacy">
               <div class="route">
                 <div class="who" data-who="you"><b>You</b><span data-got>Nothing yet</span></div>
                 <div class="who" data-who="ar"><b>AR</b><span data-got>Nothing yet</span></div>
-                <div class="who" data-who="jl"><b>JL</b><span data-got>Nothing yet</span><em>tampered panel</em></div>
+                <div class="who" data-who="jl"><b>JL</b><span data-got>Nothing yet</span><em>tampered copy</em></div>
                 <div class="server"><b>Server</b><span>Sends each answer to one person only</span></div>
               </div>
               <div class="sim-actions">
@@ -308,15 +310,16 @@
               <ol class="sim-log" aria-live="polite" aria-label="What the server did"></ol>
             </div>
             <details class="more">
-              <summary>More detail</summary>
+              <summary>Technical detail</summary>
               <dl class="eng-text"><dt>Problem</dt><dd>The promise is that your answers reach you and nobody else. A promise enforced in the browser can be undone by whoever controls the browser.</dd> <dt>Implementation</dt><dd>Every connection is bound to one participant when it opens. One function is the only way a message leaves the server, and it takes a session, not a socket. Replies are refused unless the request is outstanding on that session.</dd> <dt>Tradeoff</dt><dd>Messages that several people need, such as a screen share starting, are sent to each person individually. Slower than broadcasting, but there is no broadcast to misuse.</dd></dl>
               <h4>Limits that a reload cannot reset</h4><dl class="eng-text"><dt>Problem</dt><dd>Every question costs money and several seconds. Nothing stopped someone pressing the button repeatedly.</dd> <dt>Implementation</dt><dd>A minimum gap between one participant's requests and a daily ceiling, counted per participant rather than per connection, so closing and reopening the panel does not start the count again.</dd> <dt>Tradeoff</dt><dd>A genuine second question within a few seconds is refused. The panel says how long to wait rather than failing silently.</dd></dl>
               <p class="more-docs">Source: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/relay.js">relay.js</a>, <a href="https://github.com/richithareddyy/ZoomLens/blob/main/test-isolation.js">test-isolation.js</a>. Protocol: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/docs/protocol.md">docs/protocol.md</a></p>
             </details>
           </div>
           <div class="eng-panel" role="tabpanel" id="eng-access" aria-labelledby="eng-tab-access" hidden>
-            <h3>Noticing changes and colors</h3>
-            <dl class="eng-sum"><dt>Problem</dt><dd>Describing the screen every few seconds would be slow and costly, and a warning about colors only helps when they could really be confused.</dd><dt>Solution</dt><dd>ZoomLens compares tiny snapshots of the screen to spot real changes, and checks how its colors look to people with color blindness. Only then does it ask the AI.</dd></dl>
+            <h3>How it knows when to speak up</h3>
+            <p class="eng-plain">Think of glancing up now and then to see whether the slide changed, instead of rereading the whole slide every few seconds.</p>
+            <dl class="eng-sum"><dt>Problem</dt><dd>Announce changes has to notice when the slide changes, and Color Assist has to notice when colors could be confusing. Sending the screen to the AI every few seconds just to check would be slow and expensive.</dd><dt>Solution</dt><dd>ZoomLens keeps a tiny, blurry copy of the screen and compares it every couple of seconds. A moving mouse doesn&#39;t count, but a new slide does, and only then does it ask the AI. For colors, it checks how they would look to someone who is color-blind, and only speaks up when two of them would look alike.</dd></dl>
             <div class="sim sim-colors" data-sim="colors">
               <div class="sim-bar">
                 <div class="sim-seg" role="radiogroup" aria-label="Color vision">
@@ -334,7 +337,7 @@
               <p class="sim-result" role="status" aria-live="polite"></p>
             </div>
             <details class="more">
-              <summary>More detail</summary>
+              <summary>Technical detail</summary>
               <dl class="eng-text"><dt>Problem</dt><dd>A screen counts as changed when something a viewer would notice moved, not when a cursor drifts or the video recompresses. And many screens use several colors without relying on them.</dd> <dt>Implementation</dt><dd>Each look shrinks the screen to 64 by 36 in grey and compares it with the last screen described: a moving pointer touches about 2 of 2,304 cells, one added bullet about 40. A change must hold still for one more look before it counts. For color, strongly colored pixels are grouped by hue, each color is passed through the Machado, Oliveira and Fernandes simulation of protanopia, deuteranopia and tritanopia, and pairs are compared with CIEDE2000, which matches the published test values. A pair that is clearly different normally but under 10 apart when simulated is flagged.</dd> <dt>Tradeoff</dt><dd>The simulation models full color blindness, which most people don't have, and it isn't a medical measure. Window buttons and tab icons are colored too, so a note needs more than a few small marks of each color.</dd></dl>
               <p class="more-docs">Source: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/change.js">change.js</a>, <a href="https://github.com/richithareddyy/ZoomLens/blob/main/colors.js">colors.js</a>, <a href="https://github.com/richithareddyy/ZoomLens/blob/main/watch.js">watch.js</a>. Measurements: <a href="https://github.com/richithareddyy/ZoomLens/blob/main/docs/accessibility.md">docs/accessibility.md</a></p>
             </details>

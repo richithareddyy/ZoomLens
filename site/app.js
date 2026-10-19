@@ -1538,10 +1538,10 @@ function trySteps(root, steps) {
     tritanopia: { red: "#eb1c47", amber: "#fa908d", green: "#159b8d" },
   };
   const SAYS = {
-    normal: "All three colors are easy to tell apart, so there's no note.",
-    deuteranopia: "Red and green now look almost the same, so Color Assist adds a note and offers to explain the colors.",
-    protanopia: "The colors look closer, but they can still be told apart, so there's no note.",
-    tritanopia: "The colors change, but stay easy to tell apart, so there's no note.",
+    normal: "All three colors are easy to tell apart, so ZoomLens stays quiet.",
+    deuteranopia: "Red and green now look almost the same, so ZoomLens adds a note and offers to explain the colors.",
+    protanopia: "The colors look closer, but they can still be told apart, so ZoomLens stays quiet.",
+    tritanopia: "The colors change, but stay easy to tell apart, so ZoomLens stays quiet.",
   };
   const out = root.querySelector(".sim-result");
   const next = trySteps(root, [
@@ -1581,11 +1581,11 @@ function simSwitch(root, attr, onChange) {
   const out = root.querySelector(".sim-result");
   const keep = simSwitch(root, "keep", () => { draw(); if (keep() === "clip") next(2); });
   const next = trySteps(root, [
-    { say: "<b>Try it:</b> drag <b>When you ask</b> to pick the moment you press a button in the panel.",
+    { say: "<b>Try it:</b> drag the slider to choose the moment you press a button in ZoomLens.",
       target: () => range },
-    { say: "Most moments give no picture, because most pieces only say what changed. Now switch to <b>Keep back to the last full picture</b>.",
+    { say: "Most moments give no picture, because most pieces are only updates. Now switch to <b>Keep everything since the last full picture</b>.",
       target: () => root.querySelector('[data-keep="clip"]') },
-    { say: "Now every moment gives a picture. That's what ZoomLens keeps." },
+    { say: "Now every moment gives a picture. That's how ZoomLens does it." },
   ]);
 
   function draw() {
@@ -1601,9 +1601,9 @@ function simSwitch(root, attr, onChange) {
     root.classList.toggle("bad", !ok);
     out.textContent = keep() === "last"
       ? (units[now] === "I"
-        ? "A picture, but only by luck: the newest piece happens to be a full picture."
-        : "No picture. This piece only says what changed since earlier ones.")
-      : `A picture: the last full picture plus the ${now - key} changes since it, ${kept.length} pieces kept.`;
+        ? "A picture, but only by luck: this piece happens to be a full picture."
+        : "No picture. This piece is only an update, so there's nothing to show.")
+      : `A picture: the last full picture plus the ${now - key} update${now - key === 1 ? "" : "s"} since it.`;
   }
   range.addEventListener("input", () => { draw(); next(1); });
   draw();
@@ -1648,7 +1648,7 @@ function simSwitch(root, attr, onChange) {
   act("snoop").addEventListener("click", () => {
     next(2);
     say(["Refused. There's no way to send something to everyone.",
-         "JL's tampered panel asks for every answer."], "jl", "Refused", false);
+         "JL's tampered copy asks for everyone's answers."], "jl", "Refused", false);
   });
   act("steal").addEventListener("click", () => {
     next(3);

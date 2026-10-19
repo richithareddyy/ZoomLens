@@ -796,6 +796,7 @@ details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
 .more-docs { font-size: 0.86rem !important; }
 
 /* Engineering: three problems, each with a demo */
+.eng-plain { margin: 0 0 14px; padding: 10px 14px; font-size: 0.98rem; line-height: 1.55; color: var(--text); background: var(--bg-2); border-left: 3px solid var(--blue); }
 .eng-sum { margin: 0 0 16px; display: grid; grid-template-columns: 112px 1fr; gap: 8px 16px; }
 .eng-sum dt { font: 600 0.72rem var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--blue-ink); padding-top: 3px; }
 .eng-sum dd { margin: 0; font-size: 0.95rem; }
