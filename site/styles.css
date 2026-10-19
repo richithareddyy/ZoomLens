@@ -116,29 +116,40 @@ section h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin-bottom: 16px; }
 .tab[aria-selected="true"] { color: #fff; background: var(--blue-ink); border-color: var(--blue-ink); }
 
 /* The meeting window ------------------------------------------------------ */
+/* Laid out like the Zoom desktop client viewing a share: thumbnails along the
+   top, the share banner, the Apps sidebar, and the icon toolbar. */
 .meeting {
-  background: #1C1F26;
+  background: #1A1A1A;
   border-radius: 14px;
   box-shadow: 0 2px 4px rgba(16,24,40,.08), 0 24px 60px rgba(16,24,40,.18);
   overflow: hidden;
   color: #E6E8EC;
 }
 .m-top {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 16px; font-size: 0.8rem;
-  background: #23262E; border-bottom: 1px solid #2E323B;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  padding: 8px 14px; font-size: 0.78rem;
+  background: #1A1A1A; border-bottom: 1px solid #2A2A2A;
 }
-.m-title { font-weight: 600; }
-.m-meta { display: inline-flex; align-items: center; gap: 7px; color: #A9AFBA; }
+.m-lights { display: inline-flex; gap: 7px; }
+.m-lights i { width: 11px; height: 11px; border-radius: 50%; background: #FF5F57; }
+.m-lights i:nth-child(2) { background: #FEBC2E; }
+.m-lights i:nth-child(3) { background: #28C840; }
+.m-title { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #E6E6E6; }
+.m-shield { color: #23C552; flex: none; }
+.m-meta { justify-self: end; display: inline-flex; align-items: center; gap: 7px; color: #A3A3A3; font-variant-numeric: tabular-nums; }
 .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
 
 .m-body { display: grid; grid-template-columns: 1fr 244px; min-height: 360px; }
 .m-stage { padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .m-share-tag {
-  align-self: flex-start; font-size: 0.72rem; color: #fff;
-  background: #2E7D32; padding: 3px 9px; border-radius: 999px;
+  grid-column: 2; display: inline-flex; align-items: center; gap: 10px;
+  font-size: 0.72rem; font-weight: 600; color: #fff;
+  background: #17803D; padding: 3px 4px 3px 12px; border-radius: 6px; white-space: nowrap;
 }
+.m-share-opt { padding: 2px 8px; font-weight: 500; background: rgba(0,0,0,.25); border-radius: 4px; }
+.m-share-opt::after { content: " \25BE"; }
+.as-presenter .m-share-opt { display: none; }
 
 /* The shared screen: a white document inside the dark meeting */
 .screen {
@@ -153,31 +164,37 @@ section h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin-bottom: 16px; }
 .screen h4 { margin: 0 0 10px; font-size: 0.95rem; }
 .screen .sub { color: var(--text-2); font-size: 0.74rem; margin: -6px 0 10px; }
 
-.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* Cameras are off, so each thumbnail shows the name, as Zoom does. */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .tile {
-  position: relative; aspect-ratio: 16/10;
-  background: #2C3039; border-radius: 6px;
+  position: relative; height: 48px;
+  background: #262626; border-radius: 6px;
   display: grid; place-items: center;
-  font-size: 0.78rem; font-weight: 600; color: #C9CED6;
+  font-size: 0.82rem; font-weight: 600; color: #fff;
   border: 2px solid transparent;
 }
-.tile span { width: 30px; height: 30px; border-radius: 50%; background: #3A3F4A; display: grid; place-items: center; font-size: 0.7rem; }
-.tile.you span { width: auto; padding: 0 9px; border-radius: 999px; }
-.tile.speaking { border-color: var(--ok); }
-.talk { position: absolute; right: 6px; bottom: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
+.tile.speaking { border-color: #23C552; }
+.t-muted {
+  position: absolute; left: 6px; bottom: 4px; width: 12px; height: 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 2a2 2 0 0 0-2 2v4a2 2 0 0 0 4 0V4a2 2 0 0 0-2-2zM4.5 7.5a3.5 3.5 0 0 0 7 0M8 11v3' fill='none' stroke='%23F04438' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpath d='M2.5 2.5l11 11' stroke='%23F04438' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 
 .m-controls {
-  display: flex; justify-content: center; gap: 4px;
-  padding: 8px; background: #23262E; border-top: 1px solid #2E323B;
+  position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 2px;
+  padding: 6px 12px 7px; background: #1A1A1A; border-top: 1px solid #2A2A2A;
 }
 .ctl {
-  font: 500 0.7rem var(--font); color: #C9CED6;
-  background: none; border: none; padding: 6px 10px; border-radius: 6px;
+  flex-direction: column; min-width: 56px;
+  font: 500 0.64rem var(--font); color: #E6E6E6;
+  background: none; border: none; padding: 5px 6px 4px; border-radius: 8px;
 }
 button.ctl { cursor: pointer; }
-button.ctl:hover { background: #2E323B; }
-.ctl.off { color: var(--rec); }
-.ctl-share { color: #6EE7A0; }
+button.ctl:hover { background: #2A2A2A; }
+.ctl-count { position: absolute; top: 3px; left: calc(50% + 9px); font-size: 0.6rem; font-weight: 600; }
+.ctl-leave {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font: 600 0.74rem var(--font); color: #fff; background: #E02828; padding: 6px 14px; border-radius: 7px;
+}
 
 /* Scene contents ---------------------------------------------------------- */
 .sheet { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
@@ -267,6 +284,16 @@ button.ctl:hover { background: #2E323B; }
   display: flex; flex-direction: column; min-width: 0;
   font-size: 13px; line-height: 1.5;
 }
+/* Zoom's Apps sidebar header, above the app's own panel */
+.apps-bar {
+  display: flex; align-items: center; gap: 6px; padding: 7px 12px;
+  font-size: 0.74rem; font-weight: 600; color: var(--zl-text);
+  background: #16191F; border-bottom: 1px solid var(--zl-border);
+}
+.apps-bar .glyph-xs { width: 14px; height: 14px; background-image: url(mark-dark.svg); }
+.apps-bar i { font-style: normal; font-size: 0.56rem; font-weight: 700; letter-spacing: .03em; color: #fff; background: #3D63DD; padding: 1px 5px; border-radius: 4px; }
+.apps-back { font-size: 1rem; line-height: 1; color: var(--zl-text-3); }
+.apps-more { margin-left: auto; color: var(--zl-text-3); letter-spacing: 1px; }
 .zl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; }
 .zl-title { margin: 0; font-size: 0.9rem; font-weight: 600; letter-spacing: -0.01em; cursor: default; user-select: none; }
 .zl-head-right { display: flex; align-items: center; gap: 4px; flex: none; }
@@ -332,11 +359,12 @@ button.ctl:hover { background: #2E323B; }
 /* "Try ZoomLens" draws the eye to where to start, once, without a modal */
 
 /* Meeting controls -------------------------------------------------------- */
-.ctl { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+.ctl { position: relative; display: inline-flex; align-items: center; gap: 3px; }
 .ctl-lens { color: #9CC3FF; }
-.ctl-lens[aria-pressed="true"] { background: #2B3442; color: #fff; }
-.ctl-inert { opacity: .55; }
+.ctl-lens[aria-pressed="true"] { background: #262B35; color: #fff; }
+.ctl-inert { opacity: .85; }
 .glyph-xs { width: 15px; height: 15px; }
+.ctl-lens .glyph-xs { width: 18px; height: 18px; }
 .ctl-lens .glyph-xs { background-image: url(mark-dark.svg); }
 
 [data-tip]::after {
@@ -351,8 +379,6 @@ button.ctl:hover { background: #2E323B; }
 .lp-close[data-tip]::after { bottom: auto; top: calc(100% + 6px); left: auto; right: 0; transform: translateY(-3px); }
 .lp-close[data-tip]:hover::after, .lp-close[data-tip]:focus-visible::after { transform: none; }
 
-/* Your own tile reflects the simulated mic and camera */
-.tile.you { overflow: hidden; }
 
 /* Easter egg: the shared screen comes into focus, the meeting softens */
 .meeting.focus-mode .m-top, .meeting.focus-mode .tiles, .meeting.focus-mode .m-controls,
@@ -390,7 +416,11 @@ button.ctl:hover { background: #2E323B; }
 
   .spot-hint { font-size: 0.74rem; }
   .ctl { padding: 6px 7px; }
-  .ctl-inert:not(.ctl-share) { display: none; }
+  .ctl-inert:not(.ctl-share), .ctl-leave { display: none; }
+  .m-stage-top { grid-template-columns: 1fr auto; }
+  .m-share-tag { grid-column: 1; justify-self: start; }
+  .m-stage-top .draw-btn { grid-column: 2; }
+  .m-share-opt { display: none; }
 
   [data-tip]::after { display: none; }
 }
@@ -400,7 +430,8 @@ button.ctl:hover { background: #2E323B; }
 =========================================================================== */
 
 /* Draw a box --------------------------------------------------------------- */
-.m-stage-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.m-stage-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.m-stage-top .draw-btn { grid-column: 3; justify-self: end; }
 .draw-btn {
   display: inline-flex; align-items: center; gap: 5px;
   font: 500 0.7rem var(--font); color: #C9CED6;
@@ -485,7 +516,6 @@ button.ctl:hover { background: #2E323B; }
 .as-presenter .m-body { grid-template-columns: 1fr 0; }
 
 .as-presenter .ctl-lens, .as-presenter .draw-btn, .as-presenter .spot-hint { display: none; }
-.as-presenter .m-share-tag { background: var(--blue-ink); }
 .as-presenter .screen, .as-presenter .screen .spot { cursor: default; }
 .as-presenter .screen.focusing :is(td, th, .ctx, .spot, .pair) { opacity: 1; }
 .as-presenter .screen :is(.lit, .pointed) { background: none; box-shadow: none; color: inherit; font-weight: inherit; }

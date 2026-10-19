@@ -1366,7 +1366,7 @@ awayBtn.addEventListener("click", lookAway);
 const viewBtn = $("#view-toggle");
 const viewNote = $("#view-note");
 const pvStrip = $("#pv-strip");
-const shareTag = $(".m-share-tag");
+const shareTag = $("#share-who");
 const mkTile = $(".tile.speaking span");
 const youTile = $("#you-tile span");
 
@@ -1385,7 +1385,7 @@ function setPresenterView(on) {
   viewNote.textContent = on
     ? "This is what MK, the presenter, sees."
     : "This is your view, with ZoomLens open.";
-  shareTag.textContent = on ? "You are sharing your screen" : "MK is sharing their screen";
+  shareTag.textContent = on ? "You are screen sharing" : "You are viewing MK's screen";
   mkTile.textContent = on ? "You" : "MK";
   youTile.textContent = on ? "SL" : "You";
   screenEl.inert = on;
