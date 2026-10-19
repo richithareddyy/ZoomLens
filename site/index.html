@@ -75,7 +75,7 @@
             <button type="button" class="guide-again" id="guide-again" hidden>Start over</button>
           </div>
           <div class="demo-labels" aria-hidden="true">
-            <span>MK's shared screen</span>
+            <span>MK, the presenter, is sharing</span>
             <span>Your <em>private</em> ZoomLens panel</span>
           </div>
 
@@ -193,9 +193,9 @@
       <div class="wrap how-row">
         <h2>How it works</h2>
         <ol class="steps3">
-          <li><span class="n">01</span><b>See</b><span>Someone shares their screen.</span></li>
-          <li><span class="n">02</span><b>Ask</b><span>Privately ask ZoomLens a question.</span></li>
-          <li><span class="n">03</span><b>Understand</b><span>Get a contextual AI explanation.</span></li>
+          <li><span class="n">01</span><b>See</b><span>Someone shares their screen in a Zoom meeting.</span></li>
+          <li><span class="n">02</span><b>Ask</b><span>Open ZoomLens and ask about it. Nobody sees you ask.</span></li>
+          <li><span class="n">03</span><b>Understand</b><span>A short answer appears in your panel within seconds.</span></li>
         </ol>
       </div>
     </section>
@@ -208,14 +208,16 @@
         <div class="access-grid">
           <div>
             <h3>Blind and low vision</h3>
-            <p>Turn on <b>Announce changes</b> and ZoomLens describes the shared screen each time it changes in a way worth mentioning, read out by your own screen reader. <b>What changed?</b> says only what is new since your last answer, and descriptions include what the presenter's pointer is on.</p>
+            <p>Turn on <b>Announce changes</b> and ZoomLens describes each new slide out loud through your screen reader, without you having to ask.</p>
+            <button type="button" class="btn btn-ghost btn-sm" data-try-mode="changes" data-scene="slides">Try it on a presentation</button>
           </div>
           <div>
             <h3>Color blindness</h3>
-            <p>Turn on <b>Color Assist</b> and answers name things by label, value or position instead of color. <b>Explain colors</b> says what each color means, and a short note appears when a screen shows something by color alone.</p>
+            <p>Turn on <b>Color Assist</b> and ZoomLens tells you what the colors on screen mean, such as which numbers are good news and which are bad.</p>
+            <button type="button" class="btn btn-ghost btn-sm" data-try-mode="color" data-scene="sheet">Try it on a spreadsheet</button>
           </div>
         </div>
-        <p class="access-foot">Try both in the demo above: Color Assist on the Spreadsheet or Dashboard, Announce changes on the Presentation. Both modes are new and haven't yet been tested with blind or color-blind users.</p>
+        <p class="access-foot">Both modes are new and haven't yet been tested with blind or color-blind users.</p>
       </div>
     </section>
 
@@ -228,10 +230,10 @@
           <div>
             <h3>Protected</h3>
             <ul>
-              <li><strong>Answers go to the person who asked.</strong> The server addresses each answer to one session.</li>
+              <li><strong>Answers go to the person who asked.</strong> The server sends each answer to exactly one person.</li>
               <li><strong>Others never see it.</strong> Your questions and answers do not appear in the meeting, for other participants or the presenter.</li>
-              <li><strong>Who's asking is checked with Zoom.</strong> The server confirms each panel from Zoom's encrypted app context, so a panel can't claim to be someone else.</li>
-              <li><strong>Your questions aren't logged.</strong> The server records that a question was asked, not what it said.</li>
+              <li><strong>Who's asking is checked with Zoom.</strong> Zoom confirms who each person is, so nobody can pretend to be you and read your answers.</li>
+              <li><strong>Your questions aren't logged.</strong> The server notes that a question was asked, never what it said.</li>
             </ul>
           </div>
         </div>
@@ -345,12 +347,16 @@
         <h2>What people ask first.</h2>
         <div class="faq-list">
           <details>
+            <summary>Can I use it in my own meetings?</summary>
+            <p>Not yet. ZoomLens is in development and runs on a test Zoom account. The source is on <a href="https://github.com/richithareddyy/ZoomLens">GitHub</a>.</p>
+          </details>
+          <details>
             <summary>Does the presenter know I'm asking?</summary>
             <p>No. ZoomLens does not notify the presenter, and your questions and answers are sent only to you. Whether presenters should be told is the main open question for ethical review.</p>
           </details>
           <details>
             <summary>Can other people in the meeting see my questions?</summary>
-            <p>No. Every message the server sends is addressed to one session, and there is no broadcast. This is tested with ten participants asking at the same moment.</p>
+            <p>No. Every message the server sends goes to one person, and there is no way to send to everyone. This is tested with ten participants asking at the same moment.</p>
           </details>
           <details>
             <summary>What gets sent to the AI model?</summary>
@@ -371,10 +377,6 @@
           <details>
             <summary>Is there a limit on questions?</summary>
             <p>Yes. Each question is a paid call to the model, so each person can ask once every few seconds and up to a daily limit. The panel says how long to wait.</p>
-          </details>
-          <details>
-            <summary>Can I use it in my own meetings?</summary>
-            <p>Not yet. ZoomLens is in development and runs on a test Zoom account. The source is on <a href="https://github.com/richithareddyy/ZoomLens">GitHub</a>.</p>
           </details>
         </div>
       </div>

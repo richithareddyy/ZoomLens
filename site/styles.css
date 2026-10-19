@@ -715,14 +715,15 @@ button.ctl:hover { background: #2E323B; }
 /* ===========================================================================
    Hero and demo: the message, then the product, with nothing between them.
 =========================================================================== */
-.hero { min-height: calc(100svh - 64px); display: flex; align-items: center; padding: 48px 0 64px; }
+/* Capped so the top of the demo shows on a laptop screen without scrolling. */
+.hero { min-height: min(calc(100svh - 64px), 540px); display: flex; align-items: center; padding: 48px 0 40px; }
 .hero > .wrap { width: 100%; }
 .hero .hero-grid { grid-template-columns: 1fr; }
 .hero .hero-copy { padding-top: 0; max-width: 880px; margin: 0 auto; text-align: center; }
 .hero h1 { font-size: clamp(2.2rem, 4.4vw, 3.6rem); max-width: 26ch; margin: 0 auto; text-wrap: balance; }
 .hero .body { max-width: 560px; margin: 16px auto 26px; font-size: clamp(1.05rem, 1.3vw, 1.2rem); }
 .hero .cta { justify-content: center; }
-.demo-section { padding: 72px 0; }
+.demo-section { padding: 24px 0 72px; }
 .demo-section .hero-demo { max-width: 1080px; margin: 0 auto; }
 
 /* How it works: three steps in one row */
@@ -742,6 +743,7 @@ button.ctl:hover { background: #2E323B; }
 .access-grid h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--blue-ink); margin-bottom: 8px; }
 .access-grid p { margin: 0; color: var(--text-2); }
 .access-grid b { color: var(--text); }
+.access-grid .btn { margin-top: 14px; }
 .access-foot { max-width: 760px; margin: 24px 0 0; font-size: 0.94rem; color: var(--text-2); }
 @media (max-width: 760px) { .access-grid { grid-template-columns: 1fr; } }
 
@@ -771,7 +773,7 @@ details.more h4 { margin: 18px 0 0; font-size: 0.95rem; }
 
 @media (max-width: 760px) {
   .hero { padding: 32px 0 48px; }
-  .demo-section { padding: 48px 0; }
+  .demo-section { padding: 16px 0 48px; }
   .how-row { grid-template-columns: 1fr; gap: 12px; }
   .steps3 { grid-template-columns: 1fr; gap: 14px; }
   .priv { grid-template-columns: 1fr; gap: 8px; }

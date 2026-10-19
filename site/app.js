@@ -1456,6 +1456,21 @@ document.querySelectorAll("[data-try]").forEach((btn) => {
   });
 });
 
+// The accessibility section's buttons open the example each mode suits best,
+// with the mode already on.
+document.querySelectorAll("[data-try-mode]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const f = btn.dataset.tryMode;
+    if (state.asPresenter) setPresenterView(false);
+    selectTab(tabs.findIndex((t) => t.dataset.scene === btn.dataset.scene));
+    const sw = $(`.zl-mode[data-feature="${f}"]`);
+    if (!modes[f]) sw.click();
+    else if (f === "color") explainColors();
+    demo.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    setTimeout(() => sw.focus({ preventScroll: true }), reduceMotion ? 0 : 450);
+  });
+});
+
 // --- Easter egg: three quick presses on the lens bring the screen into focus -
 
 let presses = [];
