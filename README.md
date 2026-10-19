@@ -2,6 +2,8 @@
 
 A development prototype for asking questions about a shared screen during a Zoom meeting. Describe a slide, ask for an explanation, or follow up without interrupting the presentation.
 
+Built by Richitha Rekula as part of the Next Lab Zoom Fellowship at Arizona State University. Try the demo at [zoomlens.vercel.app](https://zoomlens.vercel.app).
+
 **Node.js · Express · Zoom Apps/RTMS SDKs · WebSockets · FFmpeg · Anthropic vision API**
 
 The backend buffers H.264 video from a screen share, decodes a still with FFmpeg, and sends it with the question to the model. Answers return to the requesting WebSocket session. Follow-ups include the previous answer and a fresh image.
