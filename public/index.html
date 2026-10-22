@@ -194,8 +194,13 @@
       padding: 4px 0; border-bottom: 1px solid var(--line);
     }
     .text dl div:last-child { border-bottom: 0; }
-    .text dt { color: var(--text-2); }
-    .text dd { margin: 0; text-align: right; font-weight: 600; }
+    /* .text breaks anywhere, which let a long value squeeze its label to one
+       letter per line. Labels keep whole words; a sentence-long value goes
+       under its label instead of beside it. */
+    .text dt { color: var(--text-2); flex: none; max-width: 45%; overflow-wrap: normal; }
+    .text dd { margin: 0; min-width: 0; text-align: right; font-weight: 600; }
+    .text dl div.long { display: block; }
+    .text dl div.long dd { margin-top: 2px; text-align: left; font-weight: 400; }
     .source { margin-top: 6px; font-size: 0.74rem; color: var(--text-3); }
     .turn .link { margin-top: 4px; }
 

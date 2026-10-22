@@ -146,6 +146,7 @@ function render(text) {
       for (; i < end; i++) {
         const [, item, value] = pair(lines[i]);
         const row = document.createElement("div");
+        if (value.length > 70) row.className = "long";
         add("dt", item, row);
         add("dd", value, row);
         list.appendChild(row);
