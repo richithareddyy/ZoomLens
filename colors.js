@@ -18,6 +18,12 @@ const MIN_PIXELS = 20;  // about one 12px status dot on a 1280x720 share
 // of a pair to cover more than a few such marks. Questions still see them all.
 const WARN_PIXELS = 80;
 
+// A whole-desktop share has the menu bar along the top and the Dock along the
+// bottom: rows of colored app icons, which made a red and green warning on
+// screens with no chart at all. Content that close to the edge is rare.
+const EDGE_TOP = Math.round(H * 0.04);
+const EDGE_BOTTOM = Math.round(H * 0.9);
+
 // Two colors are distinct when CIEDE2000 puts them this far apart, and
 // confusable when a simulated deficiency brings them within the second figure.
 const DISTINCT = 15;
@@ -132,6 +138,32 @@ function nameOf([r, g, b]) {
 const ROWS = ["top", "middle", "bottom"];
 const COLS = ["left", "centre", "right"];
 
+// Emoji, photos and gradients scatter a little of every hue in between, enough
+// to join two solid colors into one run. So a run is cut where it dips below a
+// quarter of the smaller peak on either side; a lone color or an even gradient
+// has no such dip and stays whole. Peaks closer than three bins are two shades
+// of one color, which would otherwise be flagged as confusing each other.
+const VALLEY = 0.25;
+const APART = 3;
+
+function splitAtValleys(span) {
+  const peaks = span.flatMap((b, i) =>
+    b.n >= MIN_PIXELS && b.n >= (span[i - 1]?.n ?? 0) && b.n > (span[i + 1]?.n ?? 0) ? [i] : []);
+  const parts = [];
+  let from = 0;
+  for (let k = 1; k < peaks.length; k++) {
+    if (peaks[k] - peaks[k - 1] < APART) continue;
+    let low = peaks[k - 1];
+    for (let i = low; i < peaks[k]; i++) if (span[i].n < span[low].n) low = i;
+    if (span[low].n < VALLEY * Math.min(span[peaks[k - 1]].n, span[peaks[k]].n)) {
+      parts.push(span.slice(from, low + 1));
+      from = low + 1;
+    }
+  }
+  parts.push(span.slice(from));
+  return parts;
+}
+
 export async function analyzeColors(jpeg) {
   const px = await shrink(jpeg, W, H, "rgb24");
   const bins = Array.from({ length: 360 / BIN }, () => ({
@@ -139,6 +171,9 @@ export async function analyzeColors(jpeg) {
   }));
 
   for (let i = 0, p = 0; p < px.length; i++, p += 3) {
+    const x = i % W;
+    const y = (i - x) / W;
+    if (y < EDGE_TOP || y > EDGE_BOTTOM) continue;
     const rgb = [LINEAR[px[p]], LINEAR[px[p + 1]], LINEAR[px[p + 2]]];
     const [L, a, b] = lab(rgb);
     if (L < 15 || L > 97 || Math.hypot(a, b) < CHROMA) continue;
@@ -147,31 +182,33 @@ export async function analyzeColors(jpeg) {
     bin.r += rgb[0];
     bin.g += rgb[1];
     bin.b += rgb[2];
-    const x = i % W;
-    const y = (i - x) / W;
     bin.grid[Math.floor((y * 3) / H) * 3 + Math.floor((x * 3) / W)]++;
   }
 
   // Each run of neighbouring occupied hue bins is one color. Start the walk
   // at an empty bin so a run that wraps past 360 degrees isn't split.
   const start = bins.findIndex((b) => b.n < FLOOR);
-  const runs = [];
-  let run = null;
+  const spans = [];
+  let span = null;
   for (let k = 0; k < bins.length; k++) {
     const bin = bins[(start + 1 + k) % bins.length];
     if (start === -1 || bin.n >= FLOOR) {
-      run ??= { n: 0, r: 0, g: 0, b: 0, grid: new Array(9).fill(0) };
-      run.n += bin.n;
-      run.r += bin.r;
-      run.g += bin.g;
-      run.b += bin.b;
-      bin.grid.forEach((v, j) => { run.grid[j] += v; });
-    } else if (run) {
-      runs.push(run);
-      run = null;
+      (span ??= []).push(bin);
+    } else if (span) {
+      spans.push(span);
+      span = null;
     }
   }
-  if (run) runs.push(run);
+  if (span) spans.push(span);
+
+  const runs = spans.flatMap(splitAtValleys).map((part) => part.reduce((run, bin) => {
+    run.n += bin.n;
+    run.r += bin.r;
+    run.g += bin.g;
+    run.b += bin.b;
+    bin.grid.forEach((v, j) => { run.grid[j] += v; });
+    return run;
+  }, { n: 0, r: 0, g: 0, b: 0, grid: new Array(9).fill(0) }));
 
   const colors = runs
     .filter((c) => c.n >= MIN_PIXELS)
@@ -194,6 +231,9 @@ export async function analyzeColors(jpeg) {
   const confusions = [];
   for (let i = 0; i < colors.length; i++) {
     for (let j = i + 1; j < colors.length; j++) {
+      // Two shades that share a name can't be told apart in words either, so
+      // a note about them would say nothing.
+      if (colors[i].name === colors[j].name) continue;
       const normal = deltaE(lab(colors[i].linear), lab(colors[j].linear));
       if (normal < DISTINCT) continue;
       for (const type of Object.keys(DEFICIENCIES)) {

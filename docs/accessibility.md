@@ -63,7 +63,12 @@ screen:
 
 1. shrinks the screen to 640x360 and converts it to CIELAB,
 2. keeps strongly colored pixels and groups them by hue into distinct colors,
-   with how much of the screen each covers and which of nine regions it is in,
+   with how much of the screen each covers and which of nine regions it is in.
+   Neighbouring hues are one color unless their counts dip deeply between two
+   peaks at least 45 degrees apart, so emoji or a photo that scatter every
+   hue in between can't join a red, an orange and a green into one. The top
+   4% and bottom 10% of the screen are left out, where a whole-desktop share
+   shows the menu bar and the Dock's colored app icons,
 3. simulates protanopia, deuteranopia and tritanopia on each color (Machado,
    Oliveira and Fernandes 2009, full severity),
 4. flags a pair as confusable when CIEDE2000 puts it clearly apart for normal
@@ -112,8 +117,16 @@ synthetic 1280x720 screens:
 test pairs (exact to four decimals), checks the simulation on pairs with known
 outcomes (red and green merge for deuteranopia, blue and purple for
 protanopia, blue and orange stay apart for all three), and checks that a
-status column's colors are found and flagged while a black and white slide, a
-blue and orange chart, window buttons, and a single red and green dot are not.
+status column's colors are found and flagged, as are three chart colors with
+emoji-like spots of every hue in between, while a black and white slide, a
+blue and orange chart, window buttons, a single red and green dot, and a Dock
+of red and green app icons are not.
+
+Replaying 137 frames from the development recordings (one every four seconds)
+through the analysis before and after the hue split and the edge rule: before,
+no frame was flagged, but several of those desktop screens were seen as a
+single color, which is how the Office Snack Poll with emoji was missed. After,
+one frame is flagged, red and yellow site icons in a browser's tab bar.
 
 On the demo dashboard (`demo/color-dashboard.html`, rendered at 1280x720) the
 analysis finds green, red and amber, each over 4% of the screen, and flags
@@ -165,6 +178,10 @@ When both switches are on in a meeting, the two loops share one screen capture.
   image.
 - A status shown by a single small dot of each color doesn't raise a note.
   Asking still works.
+- Color in the top 4% or bottom 10% of the screen is ignored, so a chart
+  legend along the very bottom of a full-screen slide doesn't count toward a
+  note. Colorful icons elsewhere, such as a browser's tab bar, can still raise
+  one.
 - A pointer is only mentioned if it shows in the shared video. Zoom's own
   annotation tools may not be in the stream.
 - A playing video or a webcam inside the share never holds still, so the screen

@@ -83,6 +83,24 @@ console.log("-".repeat(70) + "\n");
         found.confusions.map((c) => `${c.a}/${c.b} ${c.type} ${c.seen.toFixed(1)}`).join("; "));
 }
 
+// Emoji and photos scatter small amounts of every hue in between, which used to
+// join neighbouring colors into one: a red bar and green and orange chart
+// slices came out as a single orange, and nothing was flagged.
+{
+  const bridges = ["0xe0703a", "0xe8a33d", "0xd9b44a", "0xc8c24e", "0xa8c04f", "0x86b552", "0x6aa956", "0xb5653a", "0xc98a3e"]
+    .flatMap((c, i) => [[700 + i * 30, 120, 10, 10, c], [700 + i * 30, 560, 10, 10, c]]);
+  const found = await analyzeColors(still([
+    ...text, ...bridges,
+    [100, 560, 180, 22, "0xe5484d"],        // the leading bar
+    [760, 260, 140, 140, "0x2f9e5b"],       // chart slices
+    [920, 260, 100, 140, "0xf08a24"],
+  ]));
+  const names = found.colors.map((c) => c.name).sort().join(", ");
+  check("Colors bridged by emoji stay apart", ["green", "orange", "red"].every((n) => names.includes(n)), names);
+  check("And are still flagged", found.risky,
+        found.confusions.map((c) => `${c.a}/${c.b} ${c.type} ${c.seen.toFixed(1)}`).join("; "));
+}
+
 // 4. When not to warn.
 {
   const found = await analyzeColors(still(text));
@@ -103,6 +121,13 @@ console.log("-".repeat(70) + "\n");
 {
   const found = await analyzeColors(still([...text, ...dots(GREEN, [200]), ...dots(RED, [250])]));
   check("Neither do a single red and a single green dot", !found.risky);
+}
+{
+  // A whole-desktop share: a Dock of red and green app icons along the bottom.
+  const dock = Array.from({ length: 12 }, (_, i) => [300 + i * 56, 668, 44, 44, i % 2 ? GREEN : RED]);
+  const found = await analyzeColors(still([...text, ...dock]));
+  check("Nor does a Dock of red and green app icons", !found.risky,
+        `${found.colors.length} colors found`);
 }
 
 const failed = results.filter((r) => !r).length;
