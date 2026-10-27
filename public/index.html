@@ -89,6 +89,8 @@
 
     /* ---- Actions: one primary, the rest quiet -------------------------- */
     .actions { padding: 0 var(--s-4); flex: none; }
+    .start { padding: 0 var(--s-4) var(--s-3); flex: none; }
+    .start .hint:empty { display: none; }
     .primary {
       display: block; width: 100%; min-height: 38px;
       font-weight: 600; font-size: 0.88rem;
@@ -257,6 +259,11 @@
   </header>
 
   <div class="notice" id="notice" role="alert" hidden></div>
+
+  <div class="start" id="start" hidden>
+    <button class="primary" type="button" id="start-btn">Start ZoomLens in this meeting</button>
+    <p class="hint" id="start-hint" role="status"></p>
+  </div>
 
   <div class="actions">
     <button class="primary" type="button" data-mode="describe" disabled>Describe screen</button>

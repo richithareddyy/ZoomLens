@@ -13,6 +13,7 @@ import { captureLocalScreen } from "./screen.js";
 import { createWatcher, NO_CHANGE } from "./watch.js";
 import { analyzeColors, summarize } from "./colors.js";
 import { readAppContext, createTickets, createSignatureCheck } from "./trust.js";
+import { startRetention, hoursFrom } from "./retention.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,25 +50,13 @@ function handleWebhookEvent({ event, payload }) {
       log("Received meeting.rtms_stopped without a stream ID");
       return;
     }
-
     const client = clients.get(streamId);
     if (!client) {
       log(`Received meeting.rtms_stopped for unknown stream ${streamId}`);
       return;
     }
-
+    endStream(streamId, "Zoom stopped the stream");
     client.leave();
-    clients.delete(streamId);
-
-    const endedMeeting = meetingForStream.get(streamId);
-    if (endedMeeting) {
-      activeMeetings.delete(endedMeeting);
-      meetingForStream.delete(streamId);
-      frameBuffers.delete(endedMeeting);
-      relay?.notifyStreamState(endedMeeting, false);
-    }
-
-    log(`Left stream ${streamId}`);
     return;
   }
 
@@ -76,7 +65,14 @@ function handleWebhookEvent({ event, payload }) {
     return;
   }
 
-  log(`RTMS STARTED for meeting ${payload?.meeting_uuid}, stream ${streamId}`);
+  // Zoom resends an event it thinks went unanswered; a second client for the
+  // same stream would double every frame.
+  if (clients.has(streamId)) {
+    log(`Ignoring a repeated meeting.rtms_started for stream ${streamId}`);
+    return;
+  }
+
+  log(`RTMS STARTED for meeting ${String(payload?.meeting_uuid).slice(0, 12)}..., stream ${streamId}`);
 
   const meetingUUID = payload?.meeting_uuid ?? null;
   if (meetingUUID) {
@@ -88,31 +84,20 @@ function handleWebhookEvent({ event, payload }) {
   const client = new rtms.Client();
   clients.set(streamId, client);
 
+  // Only the screen share is listened for. The SDK subscribes to each media
+  // type a handler is registered for, so handlers for audio or transcripts
+  // would have Zoom send them here even though nothing uses them.
   client.onJoinConfirm((reason) => {
     log(`JOIN CONFIRMED (reason: ${reason}), media stream is connected`);
   });
 
-  client.onSessionUpdate((op, sessionInfo) => {
-    log(`Session update: op=${op}`, sessionInfo);
+  // Session details include names; the operation is enough to follow along.
+  client.onSessionUpdate((op) => {
+    log(`Session update: op=${op}`);
   });
 
-  client.onUserUpdate((op, participantInfo) => {
-    log(`Participant update: op=${op}`);
-  });
-
-  // Audio arrives constantly; log every 100th frame as a heartbeat.
-  let audioFrames = 0;
-  client.onAudioData((data, size, timestamp, metadata) => {
-    audioFrames++;
-    if (audioFrames % 100 === 1) {
-      log(`AUDIO flowing: frame #${audioFrames}, ${size} bytes`);
-    }
-  });
-
-  // Transcripts aren't used. Counted, never logged: they are what people said.
-  let transcriptLines = 0;
-  client.onTranscriptData(() => {
-    transcriptLines++;
+  client.onMediaConnectionInterrupted(() => {
+    log(`Media connection interrupted for stream ${streamId}`);
   });
 
   // Answers only need a still of the screen, so 5 fps is plenty.
@@ -148,16 +133,44 @@ function handleWebhookEvent({ event, payload }) {
     }
   });
 
+  // Once sharing stops, what was last shared is no longer on screen, and
+  // answering from it would describe something nobody is showing.
+  client.onSharingEvent((what) => {
+    if (what === "stop") frames.reset();
+    log(`Screen sharing ${what === "stop" ? "stopped" : "started"} in stream ${streamId}`);
+  });
+
   client.onLeave((reason) => {
-    log(`LEFT MEETING (reason: ${reason}), ${transcriptLines} transcript lines ignored`);
+    log(`LEFT MEETING (reason: ${reason})`);
     if (captureFile) {
       captureFile.end();
       log(`Capture saved: ${capturePath} (${deskFrames} frames, ${(deskBytes / 1024).toFixed(0)} KB)`);
     }
+    // Also reached when the connection drops without a stopped event.
+    endStream(streamId, `left with reason ${reason}`);
   });
 
-  client.join(payload);
-  log(`Joining stream ${streamId}...`);
+  try {
+    client.join(payload);
+    log(`Joining stream ${streamId}...`);
+  } catch (err) {
+    log(`Could not join stream ${streamId}: ${err.message}`);
+    endStream(streamId, "join failed");
+  }
+}
+
+// Forgets a stream and its video, and tells the meeting's panels. Safe to call
+// more than once for the same stream.
+function endStream(streamId, why) {
+  if (!clients.delete(streamId)) return;
+  const meetingUUID = meetingForStream.get(streamId);
+  meetingForStream.delete(streamId);
+  if (meetingUUID && activeMeetings.get(meetingUUID) === streamId) {
+    activeMeetings.delete(meetingUUID);
+    frameBuffers.delete(meetingUUID);
+    relay?.notifyStreamState(meetingUUID, false);
+  }
+  log(`Stream ${streamId} ended (${why})`);
 }
 
 // --- Answering a request -------------------------------------------------
@@ -317,6 +330,31 @@ app.get(["/", "/index.html"], (req, res) => {
 // The rest of the panel (panel.js), served from the Marketplace Home URL.
 app.use(express.static(path.join(HERE, "public")));
 
+// For the host's health check and for seeing whether Zoom is getting through.
+// Times only: no meeting, participant or count.
+app.get("/healthz", (req, res) => {
+  res.set("Cache-Control", "no-store").json({
+    ok: true,
+    lastWebhook: seen.webhook,
+    lastValidation: seen.validation,
+  });
+});
+
+// Where Zoom sends someone after they add the app. ZoomLens calls no Zoom
+// REST API, so the authorization code is not exchanged, kept or logged.
+app.get("/auth/callback", (req, res) => {
+  res.set("Cache-Control", "no-store").type("html").send(INSTALLED_HTML);
+});
+
+const INSTALLED_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>ZoomLens is added</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1.25rem;color:#1f2329}
+h1{font-size:1.4rem}a{color:#0b5cff}</style></head><body>
+<h1>ZoomLens is added to your Zoom account</h1>
+<p>Join or start a meeting, open <b>Apps</b> in the meeting toolbar, and choose <b>ZoomLens</b>.</p>
+<p><a href="https://zoomlens.vercel.app/privacy.html">Privacy Policy</a> · <a href="https://zoomlens.vercel.app/terms.html">Terms of Use</a></p>
+</body></html>`;
+
 // Zoom won't deliver events until this endpoint proves it holds the app's secret
 // token: it sends a random string and expects the HMAC back within a few seconds.
 const SECRET_TOKEN = process.env.ZM_RTMS_SECRET_TOKEN;
@@ -342,19 +380,38 @@ function handleUrlValidation(payload, res) {
     .digest("hex");
 
   res.status(200).json({ plainToken, encryptedToken });
+  seen.validation = new Date().toISOString();
   log("VALIDATION passed, Zoom will now deliver events to this address");
+}
+
+// When Zoom last reached this server, for /healthz. Zoom revalidates the
+// endpoint every 72 hours and switches the subscription off after six failed
+// revalidations in a row, which is what a laptop that sleeps eventually does.
+const seen = { webhook: null, validation: null };
+
+// Why a request failed the signature check, for the log. Never the values.
+function whyUnsigned(timestamp, signature, rawBody) {
+  if (!SECRET_TOKEN) return "ZM_RTMS_SECRET_TOKEN is not set";
+  if (!timestamp || !signature) return "it has no Zoom signature headers";
+  if (!rawBody?.length) return "it has no body";
+  const ageS = Math.round(Date.now() / 1000 - Number(timestamp));
+  if (!(Math.abs(ageS) <= 300)) return `its timestamp is ${ageS} seconds off this server's clock`;
+  return "the signature doesn't match the secret token, or it was replayed";
 }
 
 // Acknowledge first, then handle the event, so a slow join never looks like an
 // unhealthy endpoint to Zoom.
 app.post("/", (req, res) => {
   const body = req.body;
+  const timestamp = req.get("x-zm-request-timestamp");
+  const signature = req.get("x-zm-signature");
 
-  if (!signedByZoom(req.get("x-zm-request-timestamp"), req.get("x-zm-signature"), req.rawBody)) {
-    log("Rejected a POST that isn't signed by Zoom, or is stale or replayed");
+  if (!signedByZoom(timestamp, signature, req.rawBody)) {
+    log(`Rejected a POST because ${whyUnsigned(timestamp, signature, req.rawBody)}`);
     res.status(401).json({ error: "invalid signature" });
     return;
   }
+  seen.webhook = new Date().toISOString();
 
   if (!body || typeof body.event !== "string") {
     log("Rejected a POST with no event field");
@@ -431,9 +488,31 @@ relay = createRelay(server, {
   verify: verifyHello,
 });
 
+// Saved recordings and development snapshots are deleted after a day unless
+// configured otherwise; see retention.js.
+startRetention({
+  captureDir: CAPTURE_DIR,
+  snapshotDir: "snapshots",
+  captureHours: hoursFrom(process.env.ZOOM_LENS_CAPTURE_HOURS, 24),
+  snapshotHours: hoursFrom(process.env.ZOOM_LENS_SNAPSHOT_HOURS, 24),
+  log,
+});
+
+// Names only, never values, so the log can be shared when something is wrong.
+const missing = ["ZM_RTMS_CLIENT", "ZM_RTMS_SECRET", "ZM_RTMS_SECRET_TOKEN", "ANTHROPIC_API_KEY"]
+  .filter((name) => !process.env[name]);
+
 server.listen(PORT, () => {
   log(`Zoom Lens is up on port ${PORT}`);
   log(`   panel   GET  /`);
   log(`   webhook POST /`);
   log(`   relay   WS   /ws`);
+  log(`   health  GET  /healthz`);
+  if (missing.length) log(`WARNING: not set: ${missing.join(", ")}. Zoom and answers won't work until they are.`);
+  const testing = [
+    ALLOW_LOCAL_SCREEN && "reading this machine's display",
+    ALLOW_RECORDED && "answering from saved recordings",
+    SAVE_CAPTURES && "saving screen-share video to captures/",
+  ].filter(Boolean);
+  if (testing.length) log(`Testing settings on: ${testing.join(", ")}. Leave them off when hosted.`);
 });

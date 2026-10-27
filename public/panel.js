@@ -11,6 +11,7 @@ const ui = {
   composer: el("composer"), q: el("q"), send: el("send"),
   diag: el("diag"),
   dZoom: el("d-zoom"), dLink: el("d-link"), dMeeting: el("d-meeting"), dViewer: el("d-viewer"),
+  start: el("start"), startBtn: el("start-btn"), startHint: el("start-hint"),
   actions: [...document.querySelectorAll("[data-mode]")],
   switches: [...document.querySelectorAll("[data-feature]")],
   colorsButton: el("btn-colors"),
@@ -21,7 +22,9 @@ const ui = {
 const KEEPALIVE_MS = 30000;
 const BACKOFF_MS = [1000, 2000, 5000, 10000, 20000, 30000];
 
-let identity = null;        // { meetingUUID } as the SDK reports it
+let identity = null;        // { meetingUUID, role } as the SDK reports it
+let canStart = false;       // whether Zoom lets this panel start the media stream
+let starting = false;
 let zoomState = "checking"; // checking | ok | outside | elsewhere | refused
 let socket = null;
 let identified = false;
@@ -78,8 +81,10 @@ function paint() {
     [kind, text] = ["err", "Not connected"];
     empty = "ZoomLens isn't connected to this meeting.";
   } else if (!streamActive) {
-    [kind, text] = ["idle", "No shared screen"];
-    empty = "Nobody is sharing their screen. ZoomLens is ready as soon as someone does.";
+    [kind, text] = ["idle", "Not started"];
+    empty = canStart
+      ? "ZoomLens can't see this meeting's shared screen yet. Start it above."
+      : "ZoomLens can't see this meeting's shared screen yet. Ask the host to start ZoomLens.";
   } else {
     [kind, text] = ["ok", "Ready"];
     empty = "Press Describe screen for a summary of what's shared, or ask a question below.";
@@ -88,6 +93,13 @@ function paint() {
   ui.state.dataset.kind = kind;
   ui.stateText.textContent = text;
   if (ui.empty && empty) ui.empty.textContent = empty;
+
+  if (streamActive) {
+    starting = false;
+    ui.startHint.textContent = "";
+  }
+  ui.start.hidden = !(canStart && identified && open && !streamActive);
+  ui.startBtn.disabled = starting;
 
   const ready = identified && streamActive && open && !pending;
   for (const b of ui.actions) b.disabled = !ready;
@@ -314,7 +326,7 @@ async function getIdentity() {
   try {
     config = await zoomSdk.config({
       version: "0.16",
-      capabilities: ["getMeetingUUID", "getUserContext"],
+      capabilities: ["getMeetingUUID", "getUserContext", "startRTMS"],
     });
   } catch (err) {
     const message = String(err?.message ?? err);
@@ -360,8 +372,41 @@ async function getIdentity() {
 
   zoomState = "ok";
   diag("dZoom", "connected");
-  return { meetingUUID: meeting.meetingUUID };
+  // Listed as unsupported when the app's Marketplace settings don't include
+  // it, or the Zoom client is older than 6.5.5.
+  canStart = !(config.unsupportedApis ?? []).includes("startRTMS");
+  return { meetingUUID: meeting.meetingUUID, role: user?.role ?? null };
 }
+
+// Asks Zoom to start sending this meeting's screen share to ZoomLens. A host
+// starts it directly; for anyone else Zoom asks the host to allow it. Either
+// way the server learns it has started from Zoom, not from here.
+async function startStream() {
+  if (starting) return;
+  starting = true;
+  const host = identity?.role === "host" || identity?.role === "coHost";
+  ui.startHint.textContent = host ? "Starting…" : "Asking the host to allow ZoomLens…";
+  paint();
+  try {
+    await zoomSdk.callZoomApi("startRTMS");
+  } catch (err) {
+    starting = false;
+    ui.startHint.textContent = "Zoom didn't start ZoomLens. The host may need to allow it, or turn on " +
+      "sharing meeting content with apps in their Zoom settings.";
+    diag("dZoom", `startRTMS failed: ${String(err?.message ?? err)}`);
+    paint();
+    return;
+  }
+  // Nothing arriving means the host declined or never answered.
+  setTimeout(() => {
+    if (streamActive || !starting) return;
+    starting = false;
+    ui.startHint.textContent = "Still waiting for Zoom. You can try again.";
+    paint();
+  }, 30000);
+}
+
+ui.startBtn.addEventListener("click", startStream);
 
 // --- Connection -------------------------------------------------------------
 

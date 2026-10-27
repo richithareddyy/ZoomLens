@@ -50,6 +50,8 @@ lib/linux-x64/*
 !test-colors.js
 !trust.js
 !test-trust.js
+!retention.js
+!test-retention.js
 !public/*.js
 !site/*.js
 

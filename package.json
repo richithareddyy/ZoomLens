@@ -5,7 +5,8 @@
   "description": "Get started with RTMS using Node.JS ",
   "main": "index.js",
   "scripts": {
-    "start": "node --env-file=.env index.js"
+    "start": "node --env-file-if-exists=.env index.js",
+    "test": "node test-trust.js && node test-isolation.js && node test-ratelimit.js && node test-change.js && node test-colors.js && node test-watch.js && node test-retention.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",
@@ -20,6 +21,6 @@
     "@zoom/rtms@1.1.0": true
   },
   "engines": {
-    "node": ">=20.6"
+    "node": ">=22.9"
   }
 }

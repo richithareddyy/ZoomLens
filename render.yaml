@@ -1,0 +1,39 @@
+# Render Blueprint for the ZoomLens backend: the panel, Zoom's webhooks and the
+# relay, all on one HTTPS address. See docs/deploy.md.
+#
+# Choose a plan that doesn't sleep. Zoom revalidates the webhook endpoint every
+# 72 hours and expects an answer within 3 seconds; a sleeping free instance
+# misses it, and after six misses in a row Zoom switches the events off.
+
+services:
+  - type: web
+    name: zoomlens
+    runtime: node
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      # Secrets: Render asks for these when the Blueprint is created. They never
+      # go in the repository.
+      - key: ZM_RTMS_CLIENT
+        sync: false
+      - key: ZM_RTMS_SECRET
+        sync: false
+      - key: ZM_RTMS_SECRET_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: VISION_MODEL
+        sync: false
+      # Laptop-only testing settings stay off on a server.
+      - key: ZOOM_LENS_LOCAL_SCREEN
+        value: "0"
+      - key: ZOOM_LENS_ALLOW_RECORDED
+        value: "0"
+      - key: ZOOM_LENS_SAVE_CAPTURES
+        value: "0"
+      - key: ZOOM_LENS_COOLDOWN_SECONDS
+        value: "5"
+      - key: ZOOM_LENS_DAILY_LIMIT
+        value: "60"
