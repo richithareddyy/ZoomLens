@@ -960,3 +960,24 @@ body.past-hero .page-bg .hb-focus, body.past-hero .page-bg .hb-frame { opacity: 
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .rise { opacity: 1; transform: none; }
 }
+
+/* Privacy Policy and Terms of Use -------------------------------------------- */
+.doc { max-width: 780px; padding-top: 48px; padding-bottom: 72px; }
+.doc h1 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin: 8px 0 8px; }
+.doc h2 { font-size: 1.2rem; margin: 36px 0 10px; }
+.doc p, .doc li { line-height: 1.6; }
+.doc ul { padding-left: 1.2em; margin: 0; }
+.doc li { margin: 6px 0; }
+.doc a { color: var(--blue-ink); }
+.doc-meta { margin: 0 0 24px; font-size: 0.9rem; color: var(--text-2); }
+.doc-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.doc-table th, .doc-table td { text-align: left; vertical-align: top; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+.doc-table th { font-size: 0.8rem; color: var(--text-2); }
+.doc-table td:first-child { font-weight: 600; }
+@media (max-width: 640px) {
+  .doc-table thead { display: none; }
+  .doc-table tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .doc-table td { display: block; padding: 2px 0; border: 0; }
+}
+.doc-page .foot-base { margin-top: 0; }
+.doc-page .foot-base a { color: inherit; }

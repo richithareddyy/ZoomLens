@@ -29,8 +29,8 @@ It is discussed in its own section below.
 
 | Data | Where it comes from | Where it goes | Kept |
 |---|---|---|---|
-| Screen share video | Zoom RTMS, as H.264 | Memory. Also `captures/` on disk, only with `ZOOM_LENS_SAVE_CAPTURES=1` | Memory holds only since the last keyframe. A saved file persists until deleted by hand. |
-| Still images of the screen | Decoded from that video | Sent to the Anthropic API to produce an answer | Memory, plus a temporary file during decoding that is deleted afterwards. `snapshot.js` and `describe.js`, run by hand, write to `snapshots/`. |
+| Screen share video | Zoom RTMS, as H.264 | Memory. Also `captures/` on disk, only with `ZOOM_LENS_SAVE_CAPTURES=1` | Memory holds only since the last keyframe, and is dropped when sharing stops or the stream ends. A saved file is deleted after `ZOOM_LENS_CAPTURE_HOURS`, 24 by default. |
+| Still images of the screen | Decoded from that video | Sent to the Anthropic API to produce an answer | Memory, plus a temporary file during decoding that is deleted afterwards; one left by a crash is swept within ten minutes. `snapshot.js` and `describe.js`, run by hand, write to `snapshots/`, deleted after `ZOOM_LENS_SNAPSHOT_HOURS`, 24 by default. |
 | Screen fingerprints | A 64x36 greyscale reduction of a still, made every 2 seconds while someone has screen changes read out | Backend memory only | Until the next one replaces it |
 | Color analysis | The colors found in a still and where they are, made while someone has Color Assist on | Sent to the Anthropic API as text with that participant's requests | Not stored beyond the request |
 | The Color Assist setting | The panel | The Zoom client's local storage on that device | Until changed |
@@ -38,9 +38,12 @@ It is discussed in its own section below.
 | The participant's typed question | The panel | Sent to the Anthropic API with the image | Not stored, and not logged; the log records its length only |
 | The generated answer | Anthropic API | The one participant who asked | Not stored beyond the request |
 
-Audio and transcripts are received from RTMS because the stream carries them,
-but nothing is done with them and they are not sent anywhere. They are counted
-and never logged or stored. Participant names are not logged either.
+Only the screen share is received. The RTMS SDK subscribes to each media type
+a handler is registered for, and `index.js` registers one for the screen share
+alone, so Zoom sends no audio, camera video, chat or transcript. Until October
+2026 handlers for audio and transcripts were registered, so both were received
+and discarded. Participant names are not logged, and session updates are
+logged by operation only, since their details include names.
 
 ## What is guaranteed
 
@@ -129,12 +132,14 @@ could be confused. The answers still go only to that participant.
 video is written to `captures/`, and the development scripts write decoded
 images to `snapshots/`. These are recordings of other people's screens and
 should be treated the same as a meeting recording. They are excluded from
-version control but are stored in plain form and never deleted automatically.
-If the project folder is in a synced location, such as a Desktop synced to
-iCloud, they are uploaded with it.
+version control and stored in plain form. If the project folder is in a synced
+location, such as a Desktop synced to iCloud, they are uploaded with it.
 
-**There is no retention policy.** Nothing expires. Files accumulate until
-removed by hand.
+**Retention is by age, not by meeting.** `retention.js` deletes saved
+recordings and snapshots after 24 hours by default, and stray decode images
+after ten minutes, when the server starts and every hour after. A recording
+can therefore outlive its meeting by up to a day. On the hosted service the
+saving setting is off, so there is nothing to delete.
 
 **There is no audit trail.** The application logs that a request was made, its
 mode, and by which session, to the terminal only. There is no durable record of who asked
@@ -150,8 +155,10 @@ currently signals this to the person reading the answer.
 These are not part of the design and must change before anyone outside the
 project uses the application.
 
-- The backend runs on a personal laptop, reachable through an ngrok tunnel.
-  Anyone with the tunnel address can reach the panel and open a connection.
+- The backend has run on a personal laptop, reachable through an ngrok tunnel.
+  `render.yaml` and `docs/deploy.md` move it to a hosted server; anyone with
+  either address can reach the panel and open a connection, though not make a
+  request without a ticket.
 - The model provider API key belongs to an individual rather than an
   organisation. Cost per request is roughly one to three cents.
 - Saving captured screen video (`ZOOM_LENS_SAVE_CAPTURES=1`) exists so decoding

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy · ZoomLens</title>
+  <meta name="description" content="What ZoomLens processes, what it keeps, what it deletes, and who else is involved.">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="doc-page">
+  <header class="nav">
+    <div class="wrap nav-row">
+      <a class="wordmark" href="index.html" aria-label="ZoomLens home">
+        <span class="glyph" aria-hidden="true"></span><span>Zoom<b>Lens</b></span>
+      </a>
+    </div>
+  </header>
+
+  <main class="doc wrap">
+    <p class="eyebrow">Privacy Policy</p>
+    <h1>What ZoomLens does with meeting content</h1>
+    <p class="doc-meta">Last updated October 27, 2026</p>
+
+    <p>ZoomLens is a Zoom app that lets a meeting participant ask an AI about the screen someone is sharing, and shows the answer only to them. It is a student project in development, built by Richitha Rekula during the Next Lab Zoom Fellowship at Arizona State University. It is not a product of Zoom or of Arizona State University.</p>
+    <p>This policy covers the ZoomLens app inside Zoom and this website. It describes what the software actually does; where something depends on how the app is set up in Zoom, it says so.</p>
+
+    <h2>In short</h2>
+    <ul>
+      <li>ZoomLens only uses the <b>screen share</b> of a meeting. It doesn't receive the meeting's audio, participants' cameras, chat or transcripts.</li>
+      <li>The screen share is held <b>in memory, for seconds</b>, so a picture of the current screen is ready when you ask. Nothing about the meeting is saved to disk.</li>
+      <li>When you ask a question, a picture of the shared screen and your question are sent to <b>Anthropic</b>, the AI provider, to produce the answer.</li>
+      <li>Your questions and answers are shown <b>only to you</b>. They are not saved, and your questions are not written to logs.</li>
+    </ul>
+
+    <h2>When ZoomLens is active</h2>
+    <p>ZoomLens does nothing until a participant opens it in a meeting and it is started. A host can start it; when anyone else starts it, Zoom asks the host to allow it. From then until it is stopped or the meeting ends, Zoom sends ZoomLens the meeting's screen share.</p>
+    <p>The person sharing their screen is not told by ZoomLens that a participant is asking about it. Zoom's own approval for starting the app is shown to the host.</p>
+
+    <h2>Data processed temporarily</h2>
+    <table class="doc-table">
+      <thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead>
+      <tbody>
+        <tr><td>Screen-share video, from Zoom</td><td>To have a picture of the current screen ready</td><td>In memory only, and only the last few seconds: back to the most recent full frame. Discarded when sharing stops, when ZoomLens is stopped or the meeting ends, or when the server restarts.</td></tr>
+        <tr><td>A still image of the shared screen</td><td>To answer your question, or to describe a change if you turned on Announce changes</td><td>Made in memory when needed. A temporary file used while making it is deleted straight away; one left behind by a crash is deleted within about ten minutes.</td></tr>
+        <tr><td>Your question, and the previous answer for a follow-up</td><td>To produce the answer</td><td>In memory for that request. The previous answer is kept only while your ZoomLens panel stays connected.</td></tr>
+        <tr><td>A tiny grey thumbnail of the screen (64 by 36 pixels)</td><td>To notice when the screen changes, only while you have Announce changes or Color Assist on</td><td>In memory, replaced by the next one</td></tr>
+        <tr><td>Which colors are on screen and where</td><td>Color Assist, only while it's on</td><td>In memory for that check</td></tr>
+        <tr><td>Your meeting ID and Zoom user ID</td><td>To send each answer to you and nobody else. Zoom provides them in encrypted form when ZoomLens opens.</td><td>In memory for up to 12 hours, or until the server restarts</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Data stored</h2>
+    <ul>
+      <li><b>Your Color Assist setting</b>, on your own device, in the Zoom client's local storage, so it stays on in your next meeting. You can turn it off at any time.</li>
+      <li><b>Operational logs</b> on the server: when requests were made, which button was used, how long a question was (never its text), the meeting ID, and errors. Logs contain no questions, answers, images or names. They are kept by the hosting provider under its own retention settings.</li>
+    </ul>
+    <p>Nothing else is stored. There are no accounts, no history of your questions, and no recordings of meetings.</p>
+
+    <h2>Data deleted</h2>
+    <p>Everything in "Data processed temporarily" is gone once its time is up, as described above. The server also runs a cleanup when it starts and every hour, which deletes any image or video file left on disk. Those only exist if a developer turned on a testing setting that saves screen-share video, which is off on the hosted service, and they are deleted after 24 hours.</p>
+
+    <h2>Who else is involved</h2>
+    <ul>
+      <li><b>Zoom</b> provides the screen share, and tells ZoomLens who is asking through its encrypted app context. Zoom's own privacy statement covers what Zoom does.</li>
+      <li><b>Anthropic</b> receives the still image of the shared screen, your question, the previous answer for a follow-up, and with Color Assist a short description of the colors on screen, and returns the answer. The image is not filtered or redacted first, so whatever is on the shared screen is sent. With Announce changes on, a still is also sent when the screen changes, at most once every 10 seconds; with Color Assist on, only when its check finds colors that could be confused. Anthropic handles this data under its commercial terms and privacy policy.</li>
+      <li><b>The hosting provider</b> runs the ZoomLens server and keeps its operational logs.</li>
+      <li><b>Vercel</b> hosts this website. The website uses no cookies, analytics or trackers, and loads nothing from other companies. Its interactive demo runs entirely in your browser and calls no AI.</li>
+    </ul>
+    <p>ZoomLens does not sell data, show ads, or use meeting content for anything except answering the person who asked.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li>ZoomLens only reads a meeting after it is started, and the host decides whether it may start.</li>
+      <li>Announce changes and Color Assist are off until you turn them on, and can be turned off at any time.</li>
+      <li>You can remove ZoomLens from your Zoom account at any time in the Zoom App Marketplace, under the apps you've added. Because ZoomLens keeps no account data, there is nothing further to delete.</li>
+    </ul>
+
+    <h2>Limits</h2>
+    <ul>
+      <li>Answers come from an AI and can be wrong or misread the screen.</li>
+      <li>Accessibility features such as Announce changes and Color Assist have not yet been tested with the people they are designed for.</li>
+    </ul>
+
+    <h2>Changes and contact</h2>
+    <p>If what ZoomLens does with data changes, this page will be updated and the date above changed. Questions or requests: <a href="https://github.com/richithareddyy/ZoomLens/issues">open an issue on GitHub</a>.</p>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-base">
+      <span><a href="index.html">ZoomLens</a> · <a href="terms.html">Terms of Use</a></span>
+      <span>Built at ASU Next Lab × Zoom.</span>
+    </div>
+  </footer>
+</body>
+</html>

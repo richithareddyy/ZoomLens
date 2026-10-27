@@ -10,7 +10,7 @@ The backend buffers H.264 video from a screen share, decodes a still with FFmpeg
 
 ## Run locally
 
-Requires Node.js 20.6+, a configured Zoom Marketplace app, and an Anthropic API key.
+Requires Node.js 22.9+, a configured Zoom Marketplace app, and an Anthropic API key.
 
 ```bash
 npm ci
@@ -35,7 +35,10 @@ node test-ratelimit.js
 node test-change.js
 node test-colors.js
 node test-watch.js
+node test-retention.js
 ```
+
+`npm test` runs all seven.
 
 These checks do not call the model. Zoom app-context checks and signed webhooks establish request identity; images and questions still go to the model provider without redaction. Local-display and recorded-video fallbacks are opt-in and intended for controlled demonstrations. Answer accuracy has no automated evaluation, and the website demo uses scripted answers.
 

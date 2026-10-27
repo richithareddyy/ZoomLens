@@ -2,7 +2,7 @@
 
 A development prototype for asking questions about a shared screen during a Zoom meeting. The panel offers **Describe screen**, **Explain**, **What changed?**, a question box, follow-ups to the previous answer, and two accessibility modes.
 
-The idea is to help someone catch up with a slide, chart, or piece of code without interrupting the presentation. Replies return to the requesting WebSocket session. Who is asking is checked with Zoom, as described under [Current boundaries](#current-boundaries); data-retention work is still needed before broader use.
+The idea is to help someone catch up with a slide, chart, or piece of code without interrupting the presentation. Replies return to the requesting WebSocket session. Who is asking is checked with Zoom, as described under [Current boundaries](#current-boundaries), and saved screen content is deleted after a day. It still needs a hosted server and Marketplace review before broader use.
 
 ## From a screen share to an answer
 
@@ -34,7 +34,7 @@ Neither mode has been tried with the people it is for yet. [`docs/accessibility.
 
 ## Run locally
 
-Requires Node.js 20.6+, a Zoom Marketplace app configured for the panel and RTMS events, and an Anthropic API key.
+Requires Node.js 22.9+, a Zoom Marketplace app configured for the panel and RTMS events, and an Anthropic API key.
 
 ```bash
 git clone https://github.com/richithareddyy/ZoomLens.git
@@ -49,9 +49,9 @@ Set `ZM_RTMS_CLIENT`, `ZM_RTMS_SECRET`, `ZM_RTMS_SECRET_TOKEN`, `ANTHROPIC_API_K
 npm start
 ```
 
-The default port is 8080. A local tunnel such as `ngrok http 8080` supplies an HTTPS address for the Marketplace configuration. The panel is served at `/`, webhooks arrive at `POST /`, and the relay uses `/ws`. See [deployment notes](docs/deploy.md) for hosting details, subject to the limitations below.
+The default port is 8080. A local tunnel such as `ngrok http 8080` supplies an HTTPS address for the Marketplace configuration; put the same address in `ZOOM_LENS_PUBLIC_URL`. The panel is served at `/`, webhooks arrive at `POST /`, the relay uses `/ws`, and `/healthz` reports when Zoom last reached the server. [Deployment notes](docs/deploy.md) cover hosting it permanently, which Zoom's webhook revalidation needs, and [Marketplace notes](docs/marketplace.md) cover submission.
 
-The preferred input is the meeting's RTMS screen-share stream. Two development fallbacks are opt-in:
+The preferred input is the meeting's RTMS screen-share stream, started from the panel's **Start ZoomLens in this meeting** button (Zoom's `startRTMS`; a participant's press asks the host). `start-rtms.js` does the same through the REST API for development. Only the screen share is subscribed to: no audio, camera video, chat or transcript. Three development settings are opt-in:
 
 | Setting | Behavior |
 | --- | --- |
@@ -59,7 +59,7 @@ The preferred input is the meeting's RTMS screen-share stream. Two development f
 | `ZOOM_LENS_ALLOW_RECORDED=1` | Use the newest file in `captures/` when no live input is available. This is not scoped to a meeting. |
 | `ZOOM_LENS_SAVE_CAPTURES=1` | Save incoming screen-share video to `captures/`, for the recorded fallback, `snapshot.js`, and `eval-changes.js`. |
 
-Both are off by default, and fallback answers carry a source note. Keep them confined to controlled local demonstrations. `ZOOM_LENS_WATCH_SECONDS` (default 2) sets how often the accessibility modes look at the screen.
+All three are off by default, and fallback answers carry a source note. Saved recordings and snapshots are deleted after 24 hours (`ZOOM_LENS_CAPTURE_HOURS`, `ZOOM_LENS_SNAPSHOT_HOURS`). Keep them confined to controlled local demonstrations. `ZOOM_LENS_WATCH_SECONDS` (default 2) sets how often the accessibility modes look at the screen.
 
 ## Tests
 
@@ -72,6 +72,7 @@ node test-trust.js    # app context, tickets, and webhook signatures
 node test-change.js   # change detection on synthetic screens
 node test-colors.js   # color analysis against published values and synthetic screens
 node test-watch.js    # both modes reach only the participants who turned them on
+node test-retention.js # old screen content is deleted from disk, nothing else
 ```
 
 The remaining checks need external inputs:
@@ -88,7 +89,7 @@ node eval-changes.js captures/example.h264  # replays a recording through change
 
 Who is asking comes from Zoom's encrypted app context, checked when Zoom loads the panel and turned into a random ticket the panel presents; IDs the panel sends on its own are ignored. Tickets are bearer tokens held in memory for up to 12 hours, so a server restart means reopening the panel. Webhook requests, the URL-validation challenge included, must carry a valid Zoom signature, be under five minutes old, and not be replays. [`trust.js`](trust.js) holds both checks and [`test-trust.js`](test-trust.js) tests them.
 
-Images and questions are sent to Anthropic without redaction, and with an accessibility mode on, so is a still each time the screen changes (up to one every 10 seconds; Color Assist only when its analysis finds colors that could be confused). Transcripts, questions, and participant names are not logged; the log records request modes and question lengths. Screen-share video is written to `captures/` only with `ZOOM_LENS_SAVE_CAPTURES=1`, and saved recordings are not automatically deleted. The [privacy notes](docs/privacy.md) describe what is and isn't protected.
+Images and questions are sent to Anthropic without redaction, and with an accessibility mode on, so is a still each time the screen changes (up to one every 10 seconds; Color Assist only when its analysis finds colors that could be confused). Transcripts, questions, and participant names are not logged; the log records request modes and question lengths. Screen-share video is written to `captures/` only with `ZOOM_LENS_SAVE_CAPTURES=1`, and saved recordings are deleted after 24 hours by default. The [privacy notes](docs/privacy.md) describe what is and isn't protected.
 
 The app does not send its own presenter notification when a question is asked; that does not establish what Zoom displays about RTMS capture. Closing a connection loses its follow-up context. Answers can misread a screen, and the macOS display fallback cannot isolate shared content from the rest of the display.
 
