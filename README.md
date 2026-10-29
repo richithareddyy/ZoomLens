@@ -8,6 +8,8 @@ Built by Richitha Rekula as part of the Next Lab Zoom Fellowship at Arizona Stat
 
 The backend buffers H.264 video from a screen share, decodes a still with FFmpeg, and sends it with the question to the model. Answers return to the requesting WebSocket session. Follow-ups include the previous answer and a fresh image.
 
+In a meeting, the panel's **Start ZoomLens** button asks Zoom to begin sending the screen share; a participant's press asks the host. Only the screen share is received, never audio, camera video, chat, or transcripts.
+
 ## Run locally
 
 Requires Node.js 22.9+, a configured Zoom Marketplace app, and an Anthropic API key.
@@ -18,7 +20,7 @@ cp .env.example .env
 npm start
 ```
 
-Fill in the Zoom credentials, webhook secret, API key, and supported vision model in `.env`. The server defaults to port 8080; Zoom needs an HTTPS address. See [deployment](docs/deploy.md) for the complete configuration.
+Fill in the Zoom credentials, webhook secret, API key, and supported vision model in `.env`. The server defaults to port 8080; Zoom needs an HTTPS address that stays up, since it revalidates the webhook every 72 hours. See [deployment](docs/deploy.md) for the complete configuration, and `/healthz` to see when Zoom last reached the server.
 
 ## Accessibility work
 
@@ -40,8 +42,10 @@ node test-retention.js
 
 `npm test` runs all seven.
 
-These checks do not call the model. Zoom app-context checks and signed webhooks establish request identity; images and questions still go to the model provider without redaction. Local-display and recorded-video fallbacks are opt-in and intended for controlled demonstrations. Answer accuracy has no automated evaluation, and the website demo uses scripted answers.
+These checks do not call the model. Zoom app-context checks and signed webhooks establish request identity; images and questions still go to the model provider without redaction. Local-display and recorded-video fallbacks are opt-in and intended for controlled demonstrations, and any saved screen content is deleted after 24 hours. Answer accuracy has no automated evaluation, and the website demo uses scripted answers.
 
-[Privacy](docs/privacy.md) · [Panel protocol](docs/protocol.md) · [Full setup and limitations](GUIDE.md)
+[Privacy](docs/privacy.md) · [Panel protocol](docs/protocol.md) · [Full setup and limitations](GUIDE.md) · [Marketplace notes](docs/marketplace.md)
+
+Public pages: [Privacy Policy](https://zoomlens.vercel.app/privacy.html) · [Terms of Use](https://zoomlens.vercel.app/terms.html) · [Guide](https://zoomlens.vercel.app/guide.html) · [Support](https://zoomlens.vercel.app/support.html)
 
 Built on Zoom’s RTMS JavaScript quickstart; its attribution remains in [LICENSE](LICENSE).
