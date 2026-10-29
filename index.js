@@ -433,6 +433,31 @@ app.post("/", (req, res) => {
   }
 });
 
+// The Marketplace's deauthorization URL, called when someone removes the app.
+// ZoomLens keeps no account data; the only thing to undo is that person's
+// tickets, so no panel can connect as them again. Developers report these
+// notices sometimes arriving unsigned. One is acknowledged but changes
+// nothing, since acting on it would let anyone revoke someone else's tickets.
+app.post("/zoom/deauthorized", (req, res) => {
+  const timestamp = req.get("x-zm-request-timestamp");
+  const signature = req.get("x-zm-signature");
+  const userId = req.body?.payload?.user_id;
+
+  if (req.body?.event === "endpoint.url_validation" && signedByZoom(timestamp, signature, req.rawBody)) {
+    handleUrlValidation(req.body.payload, res);
+    return;
+  }
+  res.status(200).json({ status: "ok" });
+
+  if (req.body?.event !== "app_deauthorized") return;
+  if (!signedByZoom(timestamp, signature, req.rawBody)) {
+    log(`DEAUTHORIZED notice not acted on, because ${whyUnsigned(timestamp, signature, req.rawBody)}`);
+    return;
+  }
+  const n = typeof userId === "string" ? tickets.revokeUser(userId) : 0;
+  log(`DEAUTHORIZED: someone removed ZoomLens; ${n} ticket(s) revoked, no stored data to delete`);
+});
+
 // The WebSocket relay shares the port, so the panel connects back to the same address.
 const server = http.createServer(app);
 

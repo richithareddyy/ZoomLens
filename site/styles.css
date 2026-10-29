@@ -966,7 +966,8 @@ body.past-hero .page-bg .hb-focus, body.past-hero .page-bg .hb-frame { opacity: 
 .doc h1 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); margin: 8px 0 8px; }
 .doc h2 { font-size: 1.2rem; margin: 36px 0 10px; }
 .doc p, .doc li { line-height: 1.6; }
-.doc ul { padding-left: 1.2em; margin: 0; }
+.doc ul, .doc ol { padding-left: 1.2em; margin: 0; }
+.doc h3 { font-size: 1rem; margin: 22px 0 4px; }
 .doc li { margin: 6px 0; }
 .doc a { color: var(--blue-ink); }
 .doc-meta { margin: 0 0 24px; font-size: 0.9rem; color: var(--text-2); }

@@ -70,6 +70,16 @@ console.log("-".repeat(70) + "\n");
   check("An expired ticket gives nothing", tickets.check(t, now + 1001) === null);
   check("A context outside a meeting gets no ticket", tickets.issue({ ...context, typ: "panel" }, now) === null);
 }
+{
+  const tickets = createTickets();
+  const mine = tickets.issue(context, now);
+  const again = tickets.issue(context, now);
+  const theirs = tickets.issue({ ...context, uid: "user-b" }, now);
+  const n = tickets.revokeUser("user-a");
+  check("Removing the app revokes that user's tickets and nobody else's",
+        n === 2 && !tickets.check(mine, now) && !tickets.check(again, now) && tickets.check(theirs, now)?.participantUUID === "user-b",
+        `${n} revoked`);
+}
 
 // 3. Webhook signatures.
 {

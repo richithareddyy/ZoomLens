@@ -8,8 +8,10 @@ October 2026; check the Marketplace build flow, which lists anything missing.
 
 **Name.** Zoom's App Name rules don't allow "Zoom" or a variation of it in an
 app name, except to show compatibility, as in "Acme for Zoom". "ZoomLens"
-will probably have to change for the listing, for example to "Lens for Zoom
-Meetings" or a new name. The website and repository can keep theirs.
+will probably have to change for the listing. "Lens for Zoom Meetings"
+follows the pattern Zoom gives, the same one Gavel, another Next Lab fellowship
+app, uses ("Gavel for Zoom Meetings"). The website and repository can keep
+theirs.
 
 **Short description.** Ask AI about whatever is being shared in your meeting,
 privately, without interrupting.
@@ -35,8 +37,8 @@ to Anthropic's AI to produce answers.
 |---|---|
 | Privacy Policy | https://zoomlens.vercel.app/privacy.html |
 | Terms of Use | https://zoomlens.vercel.app/terms.html |
-| Support | https://github.com/richithareddyy/ZoomLens/issues |
-| Documentation | https://zoomlens.vercel.app |
+| Support | https://zoomlens.vercel.app/support.html (reports go to GitHub issues; add a support email once one is chosen) |
+| Documentation | https://zoomlens.vercel.app/guide.html, how to add, use and remove the app |
 
 Zoom asks for the domains of the Privacy Policy, Terms of Use, OAuth redirect,
 webhook and Home URLs to be verified, by a TXT record, an uploaded HTML file
@@ -52,6 +54,7 @@ or a `<meta>` tag. The values come from the Marketplace once the URLs are in.
 | Domain Allow List | `SERVER` | The panel loads from, and connects back to, the server |
 | OAuth Redirect URL | `https://SERVER/auth/callback` | Shows "ZoomLens is added". The code isn't exchanged: ZoomLens calls no Zoom REST API |
 | Event subscription | RTMS Started, RTMS Stopped, to `https://SERVER` | How the server learns to join and leave a meeting's stream |
+| Deauthorization Notification URL | `https://SERVER/zoom/deauthorized` | Zoom calls it when someone removes the app. ZoomLens keeps no account data, so it revokes that person's tickets and logs the notice; one without a valid signature changes nothing |
 | Zoom App SDK APIs | `getMeetingUUID`, `getUserContext`, `startRTMS` | See below |
 
 `SERVER` is the hosted address from `docs/deploy.md`.
@@ -125,8 +128,9 @@ Paste into the submission, with the real URLs.
 10. **Stop.** Stop sharing and press **Describe screen**: the panel says
     there is no screen to look at, rather than describing the old one. End
     the meeting; ZoomLens leaves with it.
-11. **Remove the app** from the account in the Marketplace. Nothing is left to
-    delete: ZoomLens keeps no account data.
+11. **Remove the app** from the account in the Marketplace. Zoom notifies the
+    deauthorization URL, and the server log shows `DEAUTHORIZED`. Nothing is
+    left to delete: ZoomLens keeps no account data.
 
 ## Readiness checklist
 
@@ -139,7 +143,8 @@ Paste into the submission, with the real URLs.
 | Always-on HTTPS server | `render.yaml` and `docs/deploy.md` ready; not yet deployed |
 | Automatic deletion of saved screen content | Done, tested |
 | Privacy Policy and Terms of Use | Written; live once the site deploys |
-| Support and documentation URLs | Ready |
+| Support and Guide pages | Done |
+| Deauthorization URL | Built and tested with signed and unsigned notices; Zoom only sends them to published apps |
 | App name allowed by Zoom | Needs a decision |
 | Domain verification | Needs the values from the Marketplace |
 | Production client ID in the submission | Needs the Marketplace |

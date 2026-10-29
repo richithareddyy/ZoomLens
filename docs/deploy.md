@@ -55,6 +55,7 @@ it appears. Missing one is the usual way this goes wrong.
 | Event Subscription, Event notification endpoint URL | `https://NEW` |
 | Surface, Home URL | `https://NEW` |
 | Surface, Domain Allow List | `NEW` |
+| Deauthorization Notification URL (production) | `https://NEW/zoom/deauthorized` |
 
 Then, in the event subscription:
 

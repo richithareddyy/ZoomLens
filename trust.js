@@ -76,6 +76,15 @@ export function createTickets({ ttlMs = 12 * 60 * 60 * 1000 } = {}) {
       if (!found || found.expires < now) return null;
       return { meetingUUID: found.meetingUUID, participantUUID: found.participantUUID };
     },
+
+    // For someone who removed the app: their open panels stop being trusted.
+    revokeUser(userId) {
+      let n = 0;
+      for (const [t, v] of tickets) {
+        if (v.participantUUID === userId) { tickets.delete(t); n++; }
+      }
+      return n;
+    },
   };
 }
 
