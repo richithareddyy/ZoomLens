@@ -8,10 +8,8 @@ October 2026; check the Marketplace build flow, which lists anything missing.
 
 **Name.** Zoom's App Name rules don't allow "Zoom" or a variation of it in an
 app name, except to show compatibility, as in "Acme for Zoom". "ZoomLens"
-will probably have to change for the listing. "Lens for Zoom Meetings"
-follows the pattern Zoom gives, the same one Gavel, another Next Lab fellowship
-app, uses ("Gavel for Zoom Meetings"). The website and repository can keep
-theirs.
+will probably have to change for the listing; the new name is still to be
+chosen. The website and repository can keep theirs.
 
 **Short description.** Ask AI about whatever is being shared in your meeting,
 privately, without interrupting.
