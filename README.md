@@ -47,7 +47,7 @@ node test-host.js
 
 These checks do not call the model. Zoom app-context checks and signed webhooks establish request identity; images and questions still go to the model provider without redaction. Local-display and recorded-video fallbacks are opt-in and intended for controlled demonstrations, and any saved screen content is deleted after 24 hours. Answer accuracy has no automated evaluation, and the website demo uses scripted answers.
 
-[Privacy](docs/privacy.md) · [Panel protocol](docs/protocol.md) · [Full setup and limitations](GUIDE.md) · [Marketplace notes](docs/marketplace.md)
+[Privacy](docs/privacy.md) · [Panel protocol](docs/protocol.md) · [Full setup and limitations](GUIDE.md) · [Marketplace notes](docs/marketplace.md) · [Live meeting test](docs/live-test.md)
 
 Public pages: [Privacy Policy](https://zoomlens.vercel.app/privacy.html) · [Terms of Use](https://zoomlens.vercel.app/terms.html) · [Guide](https://zoomlens.vercel.app/guide.html) · [Support](https://zoomlens.vercel.app/support.html)
 
