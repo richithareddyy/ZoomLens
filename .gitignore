@@ -52,6 +52,7 @@ lib/linux-x64/*
 !test-trust.js
 !retention.js
 !test-retention.js
+!test-host.js
 !public/*.js
 !site/*.js
 

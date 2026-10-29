@@ -123,10 +123,13 @@ Paste into the submission, with the real URLs.
 9. **Color Assist.** Share a page whose meaning is only in color, such as a
    red, amber and green status column, and turn on Color Assist. A note
    appears, and **Explain colors** says what each color means.
-10. **Stop.** Stop sharing and press **Describe screen**: the panel says
+10. **Host switch.** In the host's panel, turn **Allow ZoomLens here** off.
+    The second account's panel says the host turned ZoomLens off, and its
+    buttons stop working. Turn it back on.
+11. **Stop.** Stop sharing and press **Describe screen**: the panel says
     there is no screen to look at, rather than describing the old one. End
     the meeting; ZoomLens leaves with it.
-11. **Remove the app** from the account in the Marketplace. Zoom notifies the
+12. **Remove the app** from the account in the Marketplace. Zoom notifies the
     deauthorization URL, and the server log shows `DEAUTHORIZED`. Nothing is
     left to delete: ZoomLens keeps no account data.
 

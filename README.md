@@ -10,6 +10,8 @@ The backend buffers H.264 video from a screen share, decodes a still with FFmpeg
 
 In a meeting, the panel's **Start ZoomLens** button asks Zoom to begin sending the screen share; a participant's press asks the host. Only the screen share is received, never audio, camera video, chat, or transcripts.
 
+The meeting's host also gets a switch that turns ZoomLens off for everyone in that meeting, and each participant's panel says so. The server identifies the host from Zoom's signed `meeting.rtms_started` event, not from the panel.
+
 ## Run locally
 
 Requires Node.js 22.9+, a configured Zoom Marketplace app, and an Anthropic API key.
@@ -38,9 +40,10 @@ node test-change.js
 node test-colors.js
 node test-watch.js
 node test-retention.js
+node test-host.js
 ```
 
-`npm test` runs all seven.
+`npm test` runs all eight.
 
 These checks do not call the model. Zoom app-context checks and signed webhooks establish request identity; images and questions still go to the model provider without redaction. Local-display and recorded-video fallbacks are opt-in and intended for controlled demonstrations, and any saved screen content is deleted after 24 hours. Answer accuracy has no automated evaluation, and the website demo uses scripted answers.
 

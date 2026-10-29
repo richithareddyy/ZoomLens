@@ -51,7 +51,7 @@ npm start
 
 The default port is 8080. A local tunnel such as `ngrok http 8080` supplies an HTTPS address for the Marketplace configuration; put the same address in `ZOOM_LENS_PUBLIC_URL`. The panel is served at `/`, webhooks arrive at `POST /`, the relay uses `/ws`, and `/healthz` reports when Zoom last reached the server. [Deployment notes](docs/deploy.md) cover hosting it permanently, which Zoom's webhook revalidation needs, and [Marketplace notes](docs/marketplace.md) cover submission.
 
-The preferred input is the meeting's RTMS screen-share stream, started from the panel's **Start ZoomLens in this meeting** button (Zoom's `startRTMS`; a participant's press asks the host). `start-rtms.js` does the same through the REST API for development. Only the screen share is subscribed to: no audio, camera video, chat or transcript. Three development settings are opt-in:
+The preferred input is the meeting's RTMS screen-share stream, started from the panel's **Start ZoomLens in this meeting** button (Zoom's `startRTMS`; a participant's press asks the host). `start-rtms.js` does the same through the REST API for development. Only the screen share is subscribed to: no audio, camera video, chat or transcript. When the host starts it, the host also gets a switch that turns ZoomLens off for everyone in the meeting; the server knows the host from Zoom's signed `meeting.rtms_started` event (`operator_id` with `is_original_host`), never from the panel, so the switch doesn't appear when a participant started it. Three development settings are opt-in:
 
 | Setting | Behavior |
 | --- | --- |

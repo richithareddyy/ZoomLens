@@ -15,6 +15,7 @@ const ui = {
   actions: [...document.querySelectorAll("[data-mode]")],
   switches: [...document.querySelectorAll("[data-feature]")],
   colorsButton: el("btn-colors"),
+  host: el("host"), allow: el("allow"),
 };
 
 // --- State ------------------------------------------------------------------
@@ -30,6 +31,8 @@ let socket = null;
 let identified = false;
 let streamActive = false;
 let subscribed = false;     // features re-sent on this connection
+let allowed = true;         // false once the host turns ZoomLens off here
+let isHost = false;
 let pending = null;         // { id, mode, question } in flight
 let hasAnswer = false;      // whether a follow-up has anything to follow
 let attempt = 0;
@@ -80,6 +83,9 @@ function paint() {
   } else if (zoomState === "refused" || !identified) {
     [kind, text] = ["err", "Not connected"];
     empty = "ZoomLens isn't connected to this meeting.";
+  } else if (!allowed) {
+    [kind, text] = ["idle", "Off for this meeting"];
+    empty = "The host has turned off ZoomLens for this meeting.";
   } else if (!streamActive) {
     [kind, text] = ["idle", "Not started"];
     empty = canStart
@@ -98,17 +104,21 @@ function paint() {
     starting = false;
     ui.startHint.textContent = "";
   }
-  ui.start.hidden = !(canStart && identified && open && !streamActive);
+  ui.start.hidden = !(canStart && identified && allowed && open && !streamActive);
   ui.startBtn.disabled = starting;
 
-  const ready = identified && streamActive && open && !pending;
+  const ready = identified && allowed && streamActive && open && !pending;
   for (const b of ui.actions) b.disabled = !ready;
+  // While the host has it off, switches show off but remember what was chosen.
   for (const b of ui.switches) {
-    b.disabled = !(identified && open);
-    b.setAttribute("aria-checked", String(features[b.dataset.feature]));
+    b.disabled = !(identified && allowed && open);
+    b.setAttribute("aria-checked", String(features[b.dataset.feature] && allowed));
   }
+  ui.host.hidden = !isHost;
+  ui.allow.disabled = !open;
+  ui.allow.setAttribute("aria-checked", String(allowed));
   ui.colorsButton.hidden = !features.color;
-  if (!features.color && lastNote) {
+  if ((!features.color || !allowed) && lastNote) {
     clearNote();
     lastNote = null;
   }
@@ -418,6 +428,7 @@ function stopKeepalive() {
 // What a failed request is called, from the backend's error code and message.
 function failure(msg) {
   if (msg.code === "rate_limited") return ["Limit reached", false];
+  if (msg.code === "host_disabled") return ["Turned off by the host", false];
   if (msg.code === "no_stream") return ["No shared screen", true];
   if (msg.code === "not_identified") return ["Not connected to the meeting", false];
   if (/no screen|screen to look at/i.test(msg.message)) return ["Couldn't read the screen", true];
@@ -453,9 +464,19 @@ function connect() {
     try { msg = JSON.parse(event.data); } catch { return; }
 
     switch (msg.type) {
-      case "ready":
+      case "ready": {
         identified = Boolean(msg.identified);
         streamActive = Boolean(msg.streamActive);
+        isHost = Boolean(msg.host);
+        const was = allowed;
+        allowed = msg.allowed !== false;
+        if (identified && was !== allowed) {
+          addUpdate(allowed ? "ZoomLens is back on" : "ZoomLens turned off",
+                    allowed ? "The host turned ZoomLens back on for this meeting."
+                            : "The host turned off ZoomLens for this meeting.");
+          // Settings come back on by themselves when the host allows it again.
+          if (!allowed) subscribed = false;
+        }
         diag("dLink", `connected, session ${msg.sessionId}`);
         // Inside a meeting but not verified: the page needs a fresh load from
         // Zoom, for example after the server restarted and forgot its tickets.
@@ -464,15 +485,17 @@ function connect() {
         } else if (identified) {
           ui.notice.hidden = true;
         }
-        // The server forgets on disconnect, so ask again once per connection.
-        // It sends ready again whenever sharing starts or stops.
-        if (identified && !subscribed) {
+        // The server forgets settings on disconnect, and when the host turns
+        // ZoomLens off, so they are sent again once per connection and once
+        // after it is allowed again. Ready also comes when sharing starts or stops.
+        if (identified && allowed && !subscribed) {
           subscribed = true;
           for (const [feature, on] of Object.entries(features)) {
             if (on) socket.send(JSON.stringify({ type: "watch", feature, on }));
           }
         }
         break;
+      }
 
       case "watching": {
         const feature = msg.feature ?? "changes";
@@ -584,6 +607,12 @@ for (const button of ui.switches) {
     paint();
   });
 }
+
+// The server decides whether this participant is the host; the switch only asks.
+ui.allow.addEventListener("click", () => {
+  if (socket?.readyState !== WebSocket.OPEN) return;
+  socket.send(JSON.stringify({ type: "allow", on: !allowed }));
+});
 
 ui.q.addEventListener("input", paint);
 

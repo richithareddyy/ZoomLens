@@ -113,6 +113,20 @@ meeting's screen every 2 seconds and sends `update` when there is something to
 say. Settings belong to the connection: after a reconnect the panel sends them
 again.
 
+### `allow`
+
+The host turning ZoomLens on or off for the whole meeting.
+
+```json
+{ "type": "allow", "on": false }
+```
+
+Refused with `not_host` unless the server knows this participant is the host
+(see `host` under `ready`). Turning it off fails any request in flight in the
+meeting, so its answer is never delivered, stops the meeting's watchers, and
+sends every session in the meeting a new `ready` with `allowed: false`.
+Participants' own settings come back when the host turns it on again.
+
 ### `ping`
 
 Optional keepalive. The backend replies with `pong`. Meetings run long and
@@ -130,13 +144,20 @@ anything to look at yet.
   "type": "ready",
   "sessionId": "s-3",
   "identified": true,
-  "streamActive": false
+  "streamActive": false,
+  "allowed": true,
+  "host": false
 }
 ```
 
 `streamActive` is false when no screen share is currently being captured for
 this meeting. The panel uses it to explain why a request would return nothing,
 rather than letting the participant press a control that cannot succeed.
+
+`allowed` is false while the meeting's host has turned ZoomLens off. `host` is
+true only for the host: the user Zoom's signed `meeting.rtms_started` event
+names as having started the stream, when it also says that user is the
+original host. `ready` is sent again whenever either changes.
 
 ### `accepted`
 
@@ -206,6 +227,8 @@ requests, so an update never blocks a question.
 | `no_stream` | No screen share is being captured for this meeting |
 | `bad_request` | Malformed message, or an `ask` or `followup` with no question |
 | `rate_limited` | Too many requests from this participant, by gap or daily ceiling |
+| `host_disabled` | The meeting's host has turned ZoomLens off |
+| `not_host` | `allow` from someone other than the host |
 | `internal` | Something failed on the backend |
 
 ## Rules
