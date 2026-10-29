@@ -38,6 +38,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // isHost says whether a verified participant is the meeting's host.
 export function createRelay(httpServer, {
   log, isStreamActive, answerRequest, watchers = {}, verify, isHost = () => false,
+  rememberMs = 30 * 60 * 1000,
 }) {
   if (typeof verify !== "function") throw new Error("createRelay needs a verify function");
 
@@ -46,6 +47,19 @@ export function createRelay(httpServer, {
   const sessions = new Map(); // sessionId -> session
   const byParticipant = new Map(); // "meeting|participant" -> Set<sessionId>
   const usage = new Map(); // "meeting|participant" -> { last, count, since }
+
+  // A participant's last answer outlives their connection for a while, so
+  // closing and reopening the panel mid-meeting doesn't break follow-ups. It
+  // is only ever handed back to the same verified participant.
+  const remembered = new Map(); // "meeting|participant" -> { text, at }
+  const remember = (session, text) => {
+    session.lastAnswer = text;
+    if (session.key) remembered.set(session.key, { text, at: Date.now() });
+  };
+  const recall = (key, now = Date.now()) => {
+    for (const [k, v] of remembered) if (now - v.at > rememberMs) remembered.delete(k);
+    return remembered.get(key)?.text ?? null;
+  };
   let nextSessionId = 1;
 
   // Null to allow, otherwise the refusal text the panel shows.
@@ -192,6 +206,7 @@ export function createRelay(httpServer, {
   function bind(session) {
     const key = participantKey(session.meetingUUID, session.participantUUID);
     session.key = key;
+    session.lastAnswer = recall(key);
     if (!byParticipant.has(key)) byParticipant.set(key, new Set());
     byParticipant.get(key).add(session.id);
 
@@ -267,7 +282,11 @@ export function createRelay(httpServer, {
             log(`RELAY ${session.id} is unidentified, requests will be refused`);
           }
 
-          sendTo(session.id, readyFor(session));
+          // Only in the reply to hello: later ready messages are about state.
+          sendTo(session.id, {
+            ...readyFor(session),
+            ...(session.lastAnswer ? { previous: session.lastAnswer } : {}),
+          });
           return;
         }
 
@@ -337,7 +356,7 @@ export function createRelay(httpServer, {
             colorSafe: session.features.has("color"),
           })
             .then(({ text, note }) => {
-              if (mode !== "followup" && text !== NO_CHANGE) session.lastAnswer = text;
+              if (mode !== "followup" && text !== NO_CHANGE) remember(session, text);
               reply(session.id, id, { type: "answer", text, ...(note ? { note } : {}) });
             })
             .catch((err) => {
@@ -429,7 +448,7 @@ export function createRelay(httpServer, {
                      `You have reached today's limit of ${DAILY_LIMIT} answers, so ${FEATURES[feature]}.`);
           continue;
         }
-        session.lastAnswer = text;
+        remember(session, text);
         sendTo(session.id, { type: "update", feature, text });
       }
     },

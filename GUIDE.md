@@ -91,6 +91,6 @@ Who is asking comes from Zoom's encrypted app context, checked when Zoom loads t
 
 Images and questions are sent to Anthropic without redaction, and with an accessibility mode on, so is a still each time the screen changes (up to one every 10 seconds; Color Assist only when its analysis finds colors that could be confused). Transcripts, questions, and participant names are not logged; the log records request modes and question lengths. Screen-share video is written to `captures/` only with `ZOOM_LENS_SAVE_CAPTURES=1`, and saved recordings are deleted after 24 hours by default. The [privacy notes](docs/privacy.md) describe what is and isn't protected.
 
-The app does not send its own presenter notification when a question is asked; that does not establish what Zoom displays about RTMS capture. Closing a connection loses its follow-up context. Answers can misread a screen, and the macOS display fallback cannot isolate shared content from the rest of the display.
+The app does not send its own presenter notification when a question is asked; that does not establish what Zoom displays about RTMS capture. A participant's last answer is kept in memory for 30 minutes and handed back only to them, so reopening the panel keeps its follow-up context; after that, it's gone. Answers can misread a screen, and the macOS display fallback cannot isolate shared content from the rest of the display.
 
 [Panel protocol](docs/protocol.md) · [Deployment notes](docs/deploy.md) · [Privacy notes](docs/privacy.md)

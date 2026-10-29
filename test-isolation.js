@@ -242,6 +242,63 @@ console.log();
 
 console.log();
 line();
+// --- 8. A reopened panel gets back only its own last answer ------------------
+
+{
+  const PORT2 = PORT + 1;
+  const server2 = http.createServer();
+  const asked = [];
+  createRelay(server2, {
+    log: QUIET, isStreamActive: () => true, verify: trustHello, rememberMs: 2000,
+    answerRequest: async ({ mode, previous }) => {
+      asked.push({ mode, previous });
+      return { text: `answer to ${mode}` };
+    },
+  });
+  await new Promise((r) => server2.listen(PORT2, r));
+  const open = (meetingUUID, participantUUID) => new Promise((resolve) => {
+    const ws = new WebSocket(`ws://localhost:${PORT2}/ws`);
+    const seen = [];
+    ws.on("message", (raw) => seen.push(JSON.parse(raw.toString())));
+    ws.on("open", () => {
+      ws.send(JSON.stringify({ type: "hello", meetingUUID, participantUUID }));
+      setTimeout(() => resolve({ ws, seen }), 150);
+    });
+  });
+  const M = "meeting-reopen==";
+
+  const first = await open(M, "p-alice");
+  first.ws.send(JSON.stringify({ type: "request", id: "a-1", mode: "describe" }));
+  await settle(300);
+  first.ws.close();
+  await settle(100);
+
+  const again = await open(M, "p-alice");
+  const bob = await open(M, "p-bob");
+  const hello = again.seen.find((m) => m.type === "ready");
+  check("Reopening the panel brings back that participant's last answer",
+        hello?.previous === "answer to describe", `previous: ${hello?.previous}`);
+  check("Another participant in the meeting is never given it",
+        !bob.seen.some((m) => m.previous), JSON.stringify(bob.seen.map((m) => m.previous ?? null)));
+
+  // One participant waits between questions, reconnected or not.
+  await settle(5200);
+  again.ws.send(JSON.stringify({ type: "request", id: "a-2", mode: "followup", question: "why?" }));
+  await settle(300);
+  check("A follow-up after reopening is scoped to the remembered answer",
+        asked.at(-1)?.previous === "answer to describe", `previous: ${asked.at(-1)?.previous}`);
+
+  again.ws.close();
+  await settle(2200);
+  const late = await open(M, "p-alice");
+  check("After the time limit nothing is remembered",
+        !late.seen.some((m) => m.previous));
+
+  [bob, late].forEach((p) => p.ws.close());
+  await settle(100);
+  server2.close();
+}
+
 const failed = results.filter((r) => !r.passed);
 console.log(`  ${results.length - failed.length} of ${results.length} cases passed.`);
 if (failed.length) {

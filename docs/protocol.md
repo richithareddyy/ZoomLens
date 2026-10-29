@@ -150,6 +150,11 @@ anything to look at yet.
 }
 ```
 
+The reply to `hello` also carries `previous`, the participant's last answer,
+when they had one in this meeting in the last 30 minutes, so a reopened panel
+can show it and follow up on it. It is only ever sent to the same verified
+participant, and later `ready` messages leave it out.
+
 `streamActive` is false when no screen share is currently being captured for
 this meeting. The panel uses it to explain why a request would return nothing,
 rather than letting the participant press a control that cannot succeed.

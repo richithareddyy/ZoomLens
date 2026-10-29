@@ -468,6 +468,12 @@ function connect() {
         identified = Boolean(msg.identified);
         streamActive = Boolean(msg.streamActive);
         isHost = Boolean(msg.host);
+        // Reopened mid-meeting: the server kept this person's last answer, so
+        // show it and let the next question follow up on it.
+        if (msg.previous && !hasAnswer) {
+          addUpdate("Earlier answer", msg.previous);
+          hasAnswer = true;
+        }
         const was = allowed;
         allowed = msg.allowed !== false;
         if (identified && was !== allowed) {

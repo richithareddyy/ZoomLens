@@ -36,7 +36,7 @@ It is discussed in its own section below.
 | The Color Assist setting | The panel | The Zoom client's local storage on that device | Until changed |
 | Meeting identifier and Zoom user ID | Zoom's encrypted app context, sent with each panel load | Backend memory only, behind a random ticket | Up to 12 hours, or until the server restarts |
 | The participant's typed question | The panel | Sent to the Anthropic API with the image | Not stored, and not logged; the log records its length only |
-| The generated answer | Anthropic API | The one participant who asked | Not stored beyond the request |
+| The generated answer | Anthropic API | The one participant who asked | The participant's last answer is kept in backend memory for 30 minutes, keyed to their verified Zoom identity, so a reopened panel can follow up on it; it is given back only to them |
 
 Only the screen share is received. The RTMS SDK subscribes to each media type
 a handler is registered for, and `index.js` registers one for the screen share
